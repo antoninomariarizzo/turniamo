@@ -1,0 +1,31 @@
+# Local environment and generated files
+.venv/
+__pycache__/
+.pytest_cache/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+test-output/
+.DS_Store
+*.log
+
+# Local archives, exports and personal data
+*.sqlite*
+*.db
+*.db-*
+*.sql
+*.xlsx
+*.xls
+*.csv
+*.tsv
+*.pdf
+backups/
+data/
+exports/
+
+# Credentials
+.env
+.env.*
+*.pem
+*.key

@@ -1,0 +1,207 @@
+"""Scheduling rules. Durations are integer minutes; no GUI or storage dependencies."""
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import date, timedelta
+from enum import StrEnum
+import unicodedata
+
+
+class Activity(StrEnum):
+    SURGERY_URGENT = "surgery_urgent"
+    SURGERY_2 = "surgery_2"
+    SURGERY_3 = "surgery_3"
+    WARD = "ward"
+    WARD_HELP = "ward_help"
+    WEEK_SERVICE = "week_service"
+    DAY_DUTY = "day_duty"
+    NIGHT_DUTY = "night_duty"
+    ON_CALL_AM = "on_call_am"
+    ON_CALL_PM = "on_call_pm"
+    CLINIC_AM = "clinic_am"
+    CLINIC_PM = "clinic_pm"
+    NIGHT_OFF = "night_off"
+    ABSENCE = "absence"
+    HOLIDAY = "holiday"
+    RECOVERY = "recovery"
+
+
+ACTIVITIES = tuple(Activity)
+SURGERIES = frozenset((Activity.SURGERY_URGENT, Activity.SURGERY_2, Activity.SURGERY_3))
+ABSENCES = frozenset((Activity.ABSENCE, Activity.HOLIDAY, Activity.RECOVERY))
+WORK = frozenset(ACTIVITIES) - ABSENCES - {Activity.NIGHT_OFF}
+
+
+class RuleError(ValueError):
+    """An invalid proposed change, with a translatable message key."""
+
+    def __init__(self, key: str):
+        self.key = key
+        super().__init__(key)
+
+
+def normalize_name(name: str) -> str:
+    return unicodedata.normalize("NFKC", " ".join(name.split())).casefold()
+
+
+def monday(day: date) -> date:
+    return day - timedelta(days=day.weekday())
+
+
+def duration(minutes: int) -> str:
+    sign = "−" if minutes < 0 else ""
+    hours, mins = divmod(abs(minutes), 60)
+    return f"{sign}{hours}h{mins:02d}m"
+
+
+@dataclass(frozen=True)
+class Doctor:
+    id: str
+    name: str
+    active: bool = True
+
+
+@dataclass(frozen=True)
+class Assignment:
+    id: str
+    day: date
+    activity: Activity
+    doctor_id: str
+    paid: bool = False
+    associate_role: str = ""
+    associate_name: str = ""
+    source_id: str | None = None
+
+
+@dataclass(frozen=True)
+class Issue:
+    key: str
+    doctor_id: str
+    day: date
+    severity: str = "warning"
+
+
+@dataclass(frozen=True)
+class Total:
+    ordinary: int = 0
+    holidays: int = 0
+    recovery: int = 0
+    paid: int = 0
+
+    @property
+    def net(self) -> int:
+        return self.ordinary + self.holidays + self.recovery
+
+    @property
+    def threshold_total(self) -> int:
+        # Recovery never creates an under-hours alarm or hides over-hours.
+        return self.ordinary + self.holidays
+
+    @property
+    def status(self) -> str:
+        if self.threshold_total < 38 * 60:
+            return "below"
+        if self.threshold_total > 40 * 60:
+            return "above"
+        return "within"
+
+
+def effective_assignments(raw: list[Assignment]) -> list[Assignment]:
+    """Derive night-off from nights, including across week boundaries.
+
+    A manually entered incoming night-off is allowed when the previous night is
+    unavailable. If the night is later entered it replaces the manual entry in
+    calculation/display; it never doubles the hours or overrides payment status.
+    """
+    result = [a for a in raw if a.activity != Activity.NIGHT_OFF]
+    generated = {}
+    for a in raw:
+        if a.activity == Activity.NIGHT_DUTY:
+            day = a.day + timedelta(days=1)
+            generated[(day, a.doctor_id)] = Assignment(
+                f"night-off:{a.id}", day, Activity.NIGHT_OFF, a.doctor_id,
+                paid=a.paid, source_id=a.id,
+            )
+    result.extend(a for a in raw if a.activity == Activity.NIGHT_OFF
+                  and (a.day, a.doctor_id) not in generated)
+    result.extend(generated.values())
+    return sorted(result, key=lambda a: (a.day, ACTIVITIES.index(a.activity), a.id))
+
+
+def minutes_for(a: Assignment, assignments: list[Assignment]) -> int:
+    same_day = [x for x in assignments if x.day == a.day]
+    has_surgery = any(x.doctor_id == a.doctor_id and x.activity in SURGERIES for x in same_day)
+    if a.activity in SURGERIES:
+        return 420
+    if a.activity == Activity.WARD:
+        # Weekly service is an independent activity, not automatically ward help.
+        has_help = any(x.activity == Activity.WARD_HELP and x.doctor_id != a.doctor_id for x in same_day)
+        return 480 if has_help else 540
+    if a.activity in (Activity.WARD_HELP, Activity.WEEK_SERVICE, Activity.NIGHT_DUTY,
+                       Activity.NIGHT_OFF, Activity.ON_CALL_AM):
+        return 390
+    if a.activity == Activity.DAY_DUTY:
+        return 780
+    if a.activity == Activity.ON_CALL_PM:
+        return 180 if has_surgery else 240
+    if a.activity == Activity.CLINIC_PM:
+        return 240 if has_surgery else 270
+    if a.activity == Activity.CLINIC_AM:
+        return 360
+    if a.activity == Activity.HOLIDAY:
+        return 380
+    if a.activity == Activity.RECOVERY:
+        return -380
+    return 0
+
+
+def totals_for_week(start: date, assignments: list[Assignment], doctors: list[Doctor]) -> dict[str, Total]:
+    buckets = {d.id: dict(ordinary=0, holidays=0, recovery=0, paid=0) for d in doctors}
+    for a in assignments:
+        if not start <= a.day <= start + timedelta(days=6):
+            continue
+        bucket = buckets.setdefault(a.doctor_id, dict(ordinary=0, holidays=0, recovery=0, paid=0))
+        key = ("paid" if a.paid else "holidays" if a.activity == Activity.HOLIDAY
+               else "recovery" if a.activity == Activity.RECOVERY else "ordinary")
+        bucket[key] += minutes_for(a, assignments)
+    return {doctor_id: Total(**values) for doctor_id, values in buckets.items()}
+
+
+def validate_assignment(proposal: Assignment, raw: list[Assignment]) -> None:
+    if proposal.activity == Activity.ON_CALL_AM and proposal.day.weekday() != 5:
+        raise RuleError("error_saturday_only")
+    if proposal.paid and proposal.activity in ABSENCES:
+        raise RuleError("error_paid_absence")
+    if proposal.associate_role not in ("", "training", "reference"):
+        raise RuleError("error_associate")
+    if bool(proposal.associate_role) != bool(proposal.associate_name.strip()):
+        raise RuleError("error_associate")
+    others = [a for a in effective_assignments(raw) if a.id != proposal.id]
+    same = [a for a in others if a.day == proposal.day and a.doctor_id == proposal.doctor_id]
+    if any(a.activity == proposal.activity for a in same):
+        raise RuleError("error_duplicate_assignment")
+    # Night-off counts a previous night's work. Leave on that calendar day does
+    # not introduce a new work assignment and is therefore allowed.
+    if proposal.activity in ABSENCES:
+        if any(a.activity in WORK or a.activity in ABSENCES for a in same):
+            raise RuleError("error_unavailable")
+    elif proposal.activity in WORK and any(a.activity in ABSENCES for a in same):
+        raise RuleError("error_unavailable")
+
+
+def issues_for_week(start: date, assignments: list[Assignment]) -> list[Issue]:
+    issues: set[Issue] = set()
+    night_off = {(a.day, a.doctor_id) for a in assignments if a.activity == Activity.NIGHT_OFF}
+    for a in assignments:
+        if not start <= a.day <= start + timedelta(days=6) or a.activity not in WORK:
+            continue
+        if (a.day - timedelta(days=1), a.doctor_id) in night_off:
+            issues.add(Issue("warning_after_night_off", a.doctor_id, a.day))
+        same = [b for b in assignments if b.day == a.day and b.doctor_id == a.doctor_id]
+        if any(b.activity in ABSENCES for b in same):
+            issues.add(Issue("error_unavailable", a.doctor_id, a.day, "error"))
+        if a.activity in SURGERIES and sum(b.activity in SURGERIES for b in same) > 1:
+            issues.add(Issue("warning_multiple_surgeries", a.doctor_id, a.day))
+        if a.activity == Activity.WARD and any(b.activity == Activity.WARD_HELP for b in same):
+            issues.add(Issue("warning_own_help", a.doctor_id, a.day))
+    return sorted(issues, key=lambda i: (i.day, i.doctor_id, i.key))

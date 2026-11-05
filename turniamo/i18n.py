@@ -1,0 +1,205 @@
+"""Centralized Italian / English copy, including exports and validation."""
+
+TEXT = {
+    "duty_group": ("Guardia", "Duty"),
+    "on_call_group": ("Reperibilità", "On-call"),
+    "clinic_group": ("Ambulatorio", "Clinic"),
+    "day_shift": ("Giorno", "Day"),
+    "night_shift": ("Notte", "Night"),
+    "morning": ("Mattino", "Morning"),
+    "afternoon": ("Pomeriggio", "Afternoon"),
+    "search_doctor": ("Cerca medico…", "Search doctors…"),
+    "add_doctor": ("Aggiungi medico", "Add doctor"),
+    "delete_doctor": ("Elimina medico", "Delete doctor"),
+    "delete_doctor_confirm": ("Rimuovere {name} da questa settimana e dalle successive, inclusi i suoi incarichi? Le settimane precedenti restano conservate.", "Remove {name} from this week and later weeks, including their assignments? Earlier weeks will be preserved."),
+    "former_doctor": ("Non più nel gruppo attuale; presente in questa settimana", "No longer in the current group; included in this week"),
+    "export_database": ("Esporta database", "Export database"),
+    "import_database": ("Importa database", "Import database"),
+    "import_confirm": ("Sostituire l’archivio con il database selezionato? Verrà salvata una copia di sicurezza dell’archivio attuale.", "Replace the archive with the selected database? A backup of your current archive will be saved."),
+    "invalid_database": ("Il file non è un database turniamo valido.", "The file is not a valid turniamo database."),
+    "import_done": ("Database importato", "Database imported"),
+    "export": ("Esporta", "Export"),
+    "previous_week": ("Settimana precedente", "Previous week"),
+    "next_week": ("Settimana successiva", "Next week"),
+    "no_results": ("Nessun medico disponibile", "No available doctors"),
+    "ward_lead": ("Responsabile", "Lead"),
+    "ward_assistant": ("Aiuto", "Helper"),
+    "assignment_note": ("Dettagli turno", "Shift details"),
+    "ordinary_tooltip": ("Ordinarie + ferie − recuperi. Si segnala solo il superamento di 40h, valutato prima della sottrazione dei recuperi.", "Ordinary work + annual leave − time off in lieu. Only totals above 40h are flagged, before deducting time off in lieu."),
+    "paid_hours": ("Ore a pagamento", "Paid hours"),
+    "confirm": ("Conferma", "Confirm"),
+    "normal": ("—", "—"),
+    "calculation": ("Dettaglio del calcolo", "Calculation breakdown"),
+    "counted_hours": ("Ore conteggiate", "Counted hours"),
+    "total": ("Totale", "Total"),
+    "no_counted_duties": ("Nessuna attività conteggiata.", "No counted activities."),
+    "weighted_hours": ("Le ore seguono i pesi concordati, non la durata dell’intervallo mostrato.", "Hours follow the agreed weights, not the duration of the displayed time interval."),
+    "app_title": ("turniamo", "turniamo"),
+    "subtitle": ("Pianificazione settimanale · archivio locale", "Weekly planning · local storage"),
+    "schedule": ("Orario settimanale", "Weekly schedule"),
+    "doctors": ("Medici", "Doctors"),
+    "summary": ("Riepilogo ore", "Hours summary"),
+    "settings": ("Impostazioni", "Settings"),
+    "new_week": ("Nuova settimana", "New week"),
+    "week": ("Settimana", "Week"),
+    "date": ("Data", "Date"),
+    "day": ("Giorno", "Day"),
+    "activity": ("Attività", "Activity"),
+    "doctor": ("Medico", "Doctor"),
+    "main_doctor": ("Medico principale", "Main doctor"),
+    "add": ("Aggiungi", "Add"),
+    "edit": ("Modifica", "Edit"),
+    "remove": ("Rimuovi", "Remove"),
+    "save": ("Salva", "Save"),
+    "cancel": ("Annulla", "Cancel"),
+    "close": ("Chiudi", "Close"),
+    "name": ("Nome univoco", "Unique name"),
+    "active": ("Attivo", "Active"),
+    "active_hint": ("Attivo: disponibile per nuovi turni. Disattivato: archiviato, con storico conservato.",
+                    "Active: available for new shifts. Inactive: archived, with history preserved."),
+    "inactive": ("Archiviato", "Archived"),
+    "all_doctors": ("Anche medici archiviati", "Include archived doctors"),
+    "doctors_hint": ("Usa cognome o cognome e iniziale. Archivia un medico per conservarne lo storico senza proporlo nei nuovi turni.",
+                     "Use a surname or surname and initial. Archive doctors to preserve their history without offering them for new shifts."),
+    "empty_doctors": ("Aggiungi il primo medico nella scheda Medici.", "Add your first doctor in the Doctors tab."),
+    "schedule_hint": ("Clicca una cella e scegli il medico. Spunta per aggiungere, togli la spunta per rimuovere. Salvataggio automatico.",
+                      "Click a cell and choose a doctor. Check to add, uncheck to remove. Changes save automatically."),
+    "assignment_options": ("Opzioni turno", "Shift options"),
+    "compact": ("Vista compatta", "Compact view"),
+    "legend": ("* A pagamento · S.N. automatico dalla notte precedente · Arancione: incarico nel giorno successivo a S.N.",
+               "* Paid separately · Night-off follows the previous night automatically · Orange: duty on the day after night-off"),
+    "paid": ("A pagamento", "Paid separately"),
+    "paid_hint": ("Escluso dal monte ore ordinario; per la notte include anche lo smonto successivo.",
+                  "Excluded from ordinary hours; for a night shift this includes the following night-off."),
+    "associate": ("Persona associata", "Associated person"),
+    "associate_name": ("Nome associato", "Associated name"),
+    "none": ("Nessuna", "None"),
+    "training": ("In formazione", "In training"),
+    "reference": ("Referente", "Contact"),
+    "associate_hint": ("La persona associata non riceve ore e non è soggetta ai controlli di disponibilità.",
+                       "The associated person receives no hours and is not subject to availability checks."),
+    "select_doctor": ("Seleziona un medico…", "Select a doctor…"),
+    "assignment": ("Assegnazione", "Assignment"),
+    "assigned": ("Medici assegnati", "Assigned doctors"),
+    "empty_cell": ("Nessun medico assegnato", "No doctors assigned"),
+    "computed": ("Ore calcolate", "Calculated hours"),
+    "automatic": ("Automatico", "Automatic"),
+    "manual_night_off": ("Inserisci S.N. manualmente solo se la notte precedente non è presente nell’archivio.",
+                         "Enter night-off manually only when the previous night is not in the archive."),
+    "source_night": ("Questo smonto deriva dalla notte del {day}. Per modificarlo, apri quella notte.",
+                     "This night-off comes from the night of {day}. To change it, open that night."),
+    "open_source": ("Apri notte precedente", "Open previous night"),
+    "remove_confirm": ("Rimuovere l’assegnazione di {name}?", "Remove the assignment for {name}?"),
+    "ordinary": ("Ore ordinarie", "Ordinary hours"),
+    "holidays": ("Ferie", "Annual leave"),
+    "recovery_total": ("Recuperi", "Time off in lieu"),
+    "net": ("Totale netto", "Net total"),
+    "threshold_total": ("Ore per soglia", "Threshold hours"),
+    "status": ("Stato", "Status"),
+    "below": ("Sotto 38h", "Below 38h"),
+    "above": ("Oltre 40h", "Above 40h"),
+    "within": ("Nella fascia", "In range"),
+    "summary_hint": ("Soglia 38–40h = ordinarie + ferie. Il recupero (−6h20m) riduce il netto, senza generare l’allarme. Le ore a pagamento sono separate.",
+                     "38–40h threshold = ordinary hours + annual leave. Time off in lieu (−6h20m) reduces the net total without causing an alarm. Paid hours are separate."),
+    "details": ("Dettaglio del medico selezionato", "Selected doctor's breakdown"),
+    "issues": ("Segnalazioni", "Warnings"),
+    "no_issues": ("Nessuna segnalazione sulle assegnazioni.", "No assignment warnings."),
+    "hours_alerts": ("{count} medici fuori dalla fascia 38–40h", "{count} doctors outside the 38–40h range"),
+    "language": ("Lingua", "Language"),
+    "storage": ("Archivio locale", "Local database"),
+    "backup": ("Crea copia di sicurezza…", "Create backup…"),
+    "backup_done": ("Copia di sicurezza creata.", "Backup created."),
+    "backup_hint": ("La copia include medici, settimane e impostazioni. Conservane una anche su un altro dispositivo.",
+                    "The backup includes doctors, weeks and settings. Keep a copy on another device too."),
+    "rules": ("Regole di conteggio", "Counting rules"),
+    "rules_text": (
+        "Sala: 7h. Ambulatorio PM: 4h30m, oppure 4h dopo sala. Reperibilità PM: 4h, oppure 3h dopo sala.\n"
+        "Ambulatorio AM: 6h. Reperibilità AM: 6h30m, solo sabato. Guardia diurna: 13h.\n"
+        "Notte: 6h30m nel giorno iniziale + 6h30m nello smonto del giorno successivo.\n"
+        "Reparto: 9h senza aiuto, 8h con aiuto. Aiuto reparto / Weekly service: 6h30m.\n"
+        "Ferie: +6h20m. Recupero: −6h20m. Assenza: 0h.\n"
+        "Un incarico nel giorno successivo allo smonto è segnalato in arancione.\n"
+        "Assenza, ferie e recupero impediscono nuove assegnazioni lavorative nello stesso giorno.\n"
+        "Ogni medico principale riceve l’intero peso dell’attività. Referenti e persone in formazione: 0h.",
+        "Surgery: 7h. PM clinic: 4h30m, or 4h after surgery. PM on-call: 4h, or 3h after surgery.\n"
+        "AM clinic: 6h. AM on-call: 6h30m, Saturdays only. Day duty: 13h.\n"
+        "Night: 6h30m on the start date + 6h30m on the following night's recovery day.\n"
+        "Ward: 9h without help, 8h with help. Ward help / Weekly service: 6h30m.\n"
+        "Annual leave: +6h20m. Time off in lieu: −6h20m. Absence: 0h.\n"
+        "A duty on the day after night-off is flagged orange.\n"
+        "Absence, annual leave and time off in lieu prevent work assignments on that day.\n"
+        "Every main doctor receives the full activity hours. Contacts and trainees: 0h."),
+    "export_excel": ("Esporta Excel", "Export Excel"),
+    "export_pdf": ("Esporta PDF", "Export PDF"),
+    "print": ("Stampa", "Print"),
+    "export_done": ("Esportazione completata: {path}", "Export complete: {path}"),
+    "saved": ("Salvato sul dispositivo", "Saved on this device"),
+    "error": ("Impossibile completare", "Unable to complete"),
+    "error_name": ("Inserisci un nome da 1 a 80 caratteri.", "Enter a name of 1 to 80 characters."),
+    "error_unique_name": ("Esiste già un medico con questo nome (anche tra gli archiviati).", "A doctor with this name already exists (including archived doctors)."),
+    "error_doctor": ("Seleziona un medico attivo dall’elenco.", "Select an active doctor from the list."),
+    "error_saturday_only": ("La reperibilità del mattino è prevista solo il sabato.", "Morning on-call is available only on Saturdays."),
+    "error_paid_absence": ("Assenza, ferie e recupero non possono essere contrassegnati come attività a pagamento.", "Absence, annual leave and time off in lieu cannot be marked as separately paid duties."),
+    "error_associate": ("Scegli il ruolo e inserisci il nome della persona associata.", "Choose the role and enter the associated person's name."),
+    "error_duplicate_assignment": ("Questo medico è già assegnato a questa attività nello stesso giorno.", "This doctor is already assigned to this activity on this day."),
+    "error_unavailable": ("Il medico ha un’assenza o un incarico incompatibile con l’assenza in questa giornata. Modifica prima l’assegnazione esistente.", "The doctor has leave or a duty incompatible with leave on this day. Change the existing assignment first."),
+    "error_derived": ("Modifica la notte precedente: questo smonto è automatico.", "Edit the previous night: this night-off is automatic."),
+    "error_backup_path": ("La copia deve avere un percorso diverso dall’archivio in uso.", "The backup path must differ from the current database."),
+    "warning_after_night_off": ("Incarico nel giorno successivo allo smonto notte", "Duty on the day after night-off"),
+    "warning_multiple_surgeries": ("Medico assegnato a più sale nello stesso giorno: verificare", "Doctor assigned to multiple operating rooms on the same day: review"),
+    "warning_own_help": ("Stesso medico come responsabile e aiuto reparto: verificare", "Same doctor assigned as ward lead and helper: review"),
+    "week_picker_hint": ("Scegli un giorno: verrà aperta la settimana da lunedì a domenica. Se esiste già, sarà caricata.",
+                         "Choose a date to open its Monday–Sunday week. An existing week will be loaded."),
+    "surgery_urgent": ("CHIR URG\nB3 071", "URG SURG\nB3 071"),
+    "surgery_2": ("CHIR 2\nB3 067", "SURG 2\nB3 067"),
+    "surgery_3": ("Sala chirurgia 3", "Surgery room 3"),
+    "ward": ("Reparto", "Ward"),
+    "ward_help": ("Aiuto reparto", "Ward help"),
+    "week_service": ("ACC-W.S.", "ACC-W.S."),
+    "day_duty": ("Guardia diurna", "Day duty"),
+    "night_duty": ("Guardia notturna", "Night duty"),
+    "on_call_am": ("Reperibilità AM", "AM on-call"),
+    "on_call_pm": ("Reperibilità PM", "PM on-call"),
+    "clinic_am": ("Ambulatorio AM", "AM clinic"),
+    "clinic_pm": ("Ambulatorio PM", "PM clinic"),
+    "night_off": ("S.N.", "Night-off"),
+    "absence": ("Assenza", "Absence"),
+    "holiday": ("Ferie", "Annual leave"),
+    "recovery": ("Recupero", "Time off in lieu"),
+    "minutes": ("Minuti", "Minutes"),
+    "hours": ("Ore", "Hours"),
+    "decimal_hours": ("Ore decimali, visualizzate con 2 decimali: 6h20m = 6,333… h; 6h30m = 6,50 h. I calcoli conservano i minuti esatti.",
+                      "Decimal hours, displayed to 2 decimals: 6h20m = 6.333… h; 6h30m = 6.50 h. Calculations retain exact minutes."),
+    "yes": ("Sì", "Yes"),
+    "no": ("No", "No"),
+    "manual": ("Manuale", "Manual"),
+}
+
+DAYS = {
+    "it": ("Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"),
+    "en": ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"),
+}
+
+SHORT_ACTIVITIES = {
+    "it": ("Sala\nurgente", "Sala\nchir. 2", "Sala\nchir. 3", "Reparto", "Aiuto\nrep.",
+           "Weekly\nservice", "Guardia\ngiorno", "Guardia\nnotte", "Rep.\nAM", "Rep.\nPM",
+           "Amb.\nAM", "Amb.\nPM", "S.N.", "Assenza", "Ferie", "Recupero"),
+    "en": ("Urgent\nsurgery", "Surgery\nroom 2", "Surgery\nroom 3", "Ward", "Ward\nhelp",
+           "Weekly\nservice", "Day\nduty", "Night\nduty", "On-call\nAM", "On-call\nPM",
+           "Clinic\nAM", "Clinic\nPM", "Night-off", "Absence", "Annual\nleave", "Time off\nin lieu"),
+}
+
+
+def tr(key: str, language: str = "it", **values) -> str:
+    return TEXT[key][1 if language == "en" else 0].format(**values)
+
+
+def day_label(day, language: str = "it") -> str:
+    days = ("LU", "MA", "ME", "GI", "VE", "SA", "DO") if language == "it" else ("MO", "TU", "WE", "TH", "FR", "SA", "SU")
+    return f"{day:%d} {days[day.weekday()]}"
+
+
+def week_label(start, language: str = "it") -> str:
+    from datetime import timedelta
+    end = start + timedelta(days=6)
+    return f"{start:%d/%m/%Y} – {end:%d/%m/%Y}"
