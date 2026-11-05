@@ -5,7 +5,7 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-ROOT_FILES = {".gitignore", "README.md", "pyproject.toml", "run.py"}
+ROOT_FILES = {"LICENSE", ".gitignore", "README.md", "pyproject.toml", "run.py"}
 ASSETS = {"turniamo.png", "turniamo.ico", "turniamo.icns"}
 SECRET = re.compile(
     rb"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"

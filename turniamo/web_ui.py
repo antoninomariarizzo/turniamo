@@ -1,6 +1,7 @@
 """Local HTML desktop UI. No server, network requests, or third-party assets."""
 from __future__ import annotations
 
+from contextlib import closing
 from dataclasses import asdict, replace
 from datetime import date, datetime, timedelta
 import json
@@ -37,12 +38,12 @@ def default_export_path(filename):
 def backup_before_migration(path: Path):
     if not path.exists():
         return
-    with sqlite3.connect(path) as source:
+    with closing(sqlite3.connect(path)) as source:
         version = source.execute("PRAGMA user_version").fetchone()[0]
         if version < 2:
             folder = path.parent / "backups"
             folder.mkdir(exist_ok=True)
-            with sqlite3.connect(folder / f"before-html-update-{datetime.now():%Y%m%d-%H%M%S}.sqlite3") as target:
+            with closing(sqlite3.connect(folder / f"before-html-update-{datetime.now():%Y%m%d-%H%M%S}.sqlite3")) as target:
                 source.backup(target)
 
 
@@ -53,7 +54,7 @@ def import_database(store: Store, source_path: str):
     with tempfile.TemporaryDirectory(prefix="turniamo-import-") as folder:
         candidate = Path(folder) / "candidate.sqlite3"
         try:
-            with sqlite3.connect(Path(source_path).resolve().as_uri() + "?mode=ro", uri=True) as source:
+            with closing(sqlite3.connect(Path(source_path).resolve().as_uri() + "?mode=ro", uri=True)) as source:
                 if source.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
                     raise ValueError("integrity")
                 version = source.execute("PRAGMA user_version").fetchone()[0]
@@ -70,7 +71,7 @@ def import_database(store: Store, source_path: str):
                         raise ValueError("schema")
                 if version == 2 and {r[1] for r in source.execute("PRAGMA table_info(week_doctors)")} != {"week_start", "doctor_id", "name"}:
                     raise ValueError("roster")
-                with sqlite3.connect(candidate) as target:
+                with closing(sqlite3.connect(candidate)) as target:
                     source.backup(target)
             incoming = Store(candidate)
             try:

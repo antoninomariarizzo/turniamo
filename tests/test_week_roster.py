@@ -121,3 +121,33 @@ def test_rejected_import_never_changes_live_data(tmp_path,kind):
     with pytest.raises(RuleError,match='invalid_database'):
         import_database(store,str(path))
     assert store.doctors()[0].name=='Keep me'
+
+
+@pytest.mark.parametrize('valid', [True, False])
+def test_import_closes_temporary_database_connections(tmp_path, monkeypatch, valid):
+    store = Store(tmp_path / 'live.sqlite3')
+    source = Store(tmp_path / 'source.sqlite3')
+    if not valid:
+        source.db.execute('PRAGMA foreign_keys=OFF')
+        with source.db:
+            source.db.execute("INSERT INTO assignments VALUES('bad','2026-12-07','ward','missing',0,'','')")
+    source.close()
+    original_connect = sqlite3.connect
+    opened = []
+
+    def tracking_connect(*args, **kwargs):
+        connection = original_connect(*args, **kwargs)
+        opened.append(connection)
+        return connection
+
+    monkeypatch.setattr(sqlite3, 'connect', tracking_connect)
+    if valid:
+        import_database(store, str(tmp_path / 'source.sqlite3'))
+    else:
+        with pytest.raises(RuleError, match='invalid_database'):
+            import_database(store, str(tmp_path / 'source.sqlite3'))
+    assert opened
+    for connection in opened:
+        with pytest.raises(sqlite3.ProgrammingError, match='closed'):
+            connection.execute('PRAGMA user_version')
+    store.close()

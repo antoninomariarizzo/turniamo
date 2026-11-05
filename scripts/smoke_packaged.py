@@ -1,4 +1,5 @@
 """Check that the packaged executable starts with its own bundled dependencies."""
+from contextlib import closing
 from pathlib import Path
 import os
 import sqlite3
@@ -25,12 +26,12 @@ with tempfile.TemporaryDirectory(prefix="turniamo-smoke-") as data_dir:
                 raise RuntimeError(f"Packaged app exited early: {process.communicate()}")
             if database.exists():
                 try:
-                    with sqlite3.connect(database) as connection:
+                    with closing(sqlite3.connect(database)) as connection:
                         ready = connection.execute("SELECT count(*) FROM weeks").fetchone()[0] > 0
                 except sqlite3.Error:
                     pass
                 if ready:
-                    with sqlite3.connect(database) as connection:
+                    with closing(sqlite3.connect(database)) as connection:
                         for table in ('doctors', 'assignments', 'week_doctors'):
                             assert connection.execute(f'SELECT count(*) FROM {table}').fetchone()[0] == 0, f'Packaged app contains unexpected {table} data'
                     time.sleep(1)

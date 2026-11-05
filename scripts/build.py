@@ -14,6 +14,7 @@ else:
 if sys.platform == "darwin":
     command += ["--osx-bundle-identifier", "local.turniamo.desktop",
                 "--icon", str(ROOT / "turniamo" / "assets" / "turniamo.icns")]
+command += ["--add-data", str(ROOT / "LICENSE") + ":."]
 command += ["--add-data", str(ROOT / "turniamo" / "assets") + ":turniamo/assets"]
 command += ["--add-data", str(ROOT / "turniamo" / "web") + ":turniamo/web", str(ROOT / "run.py")]
 subprocess.run(command, cwd=ROOT, check=True)

@@ -22,4 +22,6 @@ The app creates an empty local archive: no doctor data is included. To update, c
 
 ---
 
+Licenza / License: BSD-3-Clause, Copyright © 2026 Antonino Maria Rizzo. See [LICENSE](https://github.com/antoninomariarizzo/turniamo/blob/main/LICENSE). Dependencies retain their own licenses.
+
 `SHA256SUMS.txt` contains SHA-256 checksums for both downloads.

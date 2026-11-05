@@ -81,6 +81,7 @@ jobs:
         run: |
           test -s turniamo-Windows.exe
           test -s turniamo-macOS-AppleSilicon.zip
+          cp ../LICENSE LICENSE
           sha256sum turniamo-Windows.exe turniamo-macOS-AppleSilicon.zip > SHA256SUMS.txt
       - name: Publish both verified packages together
         env:
@@ -91,5 +92,5 @@ jobs:
           if ! gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
             gh release create "$RELEASE_TAG" --verify-tag --draft --title "turniamo $RELEASE_TAG" --notes-file .github/RELEASE_NOTES.md
           fi
-          gh release upload "$RELEASE_TAG" release-assets/turniamo-Windows.exe release-assets/turniamo-macOS-AppleSilicon.zip release-assets/SHA256SUMS.txt --clobber
+          gh release upload "$RELEASE_TAG" release-assets/turniamo-Windows.exe release-assets/turniamo-macOS-AppleSilicon.zip release-assets/SHA256SUMS.txt release-assets/LICENSE --clobber
           gh release edit "$RELEASE_TAG" --draft=false --latest
