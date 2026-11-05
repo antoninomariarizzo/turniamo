@@ -207,3 +207,57 @@ def test_export_defaults_to_downloads_then_desktop(tmp_path, monkeypatch):
     assert default_export_path('week.pdf') == str(downloads / 'week.pdf')
     downloads.rmdir()
     assert default_export_path('week.pdf') == str(desktop / 'week.pdf')
+
+
+@pytest.mark.parametrize('role', ['reference', 'training'])
+def test_assignment_dialog_reopens_cancels_and_saves_associate(app, role):
+    store, first, _ = sample_store()
+    window = MainWindow(store)
+    window.show()
+    wait_js(window, 'window.turniamoReady === true')
+    more = "document.querySelector('[data-activity=surgery_2] .more')"
+    for _ in range(5):
+        js(window, more + '.click()')
+        assert js(window, "document.querySelector('#dialog').open")
+        assert js(window, "getComputedStyle(document.querySelector('#dialog'),'::backdrop').backdropFilter") == 'none'
+        assert js(window, "document.querySelector('#popover').hidden")
+        assert js(window, "document.querySelector('#associate-name').value") == 'Verdi A.'
+        js(window, f"document.querySelector('#associate-role').value='{role}';document.querySelector('#associate-role').dispatchEvent(new Event('change'))")
+        assert js(window, "document.activeElement.id") == 'associate-name'
+        js(window, "document.querySelector('#associate-name').value='Discarded';document.querySelector('#dialog .quiet-button').click()")
+        assert not js(window, "document.querySelector('#dialog').open")
+    assert next(a for a in store.raw_assignments() if a.id == 'surgery').associate_name == 'Verdi A.'
+    js(window, more + '.click()')
+    js(window, f"document.querySelector('#associate-role').value='{role}';document.querySelector('#associate-role').dispatchEvent(new Event('change'));document.querySelector('#associate-name').value='Persona demo';document.querySelector('#dialog .primary').click()")
+    wait_js(window, "!document.querySelector('#dialog').open && document.querySelector('[data-activity=surgery_2] .associated').textContent.includes('Persona demo')")
+    saved = next(a for a in store.raw_assignments() if a.id == 'surgery')
+    assert (saved.associate_role, saved.associate_name) == (role, 'Persona demo')
+    js(window, more + '.click()')
+    assert js(window, "document.querySelector('#associate-role').value") == role
+    assert js(window, "document.querySelector('#associate-name').value") == 'Persona demo'
+    js(window, "document.querySelector('#dialog .quiet-button').click()")
+    window.close()
+    store.close()
+
+
+@pytest.mark.parametrize('kind', ['new_week', 'remove_doctor', 'derived_assignment'])
+def test_other_dialogs_open_complete_and_can_be_dismissed(app, kind):
+    store, _, _ = sample_store()
+    window = MainWindow(store)
+    window.show()
+    wait_js(window, 'window.turniamoReady === true')
+    if kind == 'new_week':
+        js(window, "document.querySelector('#new-week').click()")
+    elif kind == 'remove_doctor':
+        js(window, "document.querySelector('[data-tab=doctors]').click();document.querySelector('.trash').click()")
+    else:
+        js(window, "document.querySelector('[data-activity=night_off] .more').click()")
+    assert js(window, "document.querySelector('#dialog').open")
+    assert js(window, "document.querySelector('#dialog h2').textContent.length > 0")
+    assert js(window, "document.querySelector('#dialog').contains(document.activeElement)")
+    dismiss = '.primary' if kind == 'derived_assignment' else '.quiet-button'
+    js(window, f"document.querySelector('#dialog {dismiss}').click()")
+    assert not js(window, "document.querySelector('#dialog').open")
+    assert len(store.raw_assignments()) == 4
+    window.close()
+    store.close()

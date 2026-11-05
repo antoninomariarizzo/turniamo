@@ -1,5 +1,11 @@
 ## Italiano
 
+### Novità
+
+- Pannelli dei tre puntini più leggeri: eliminata la sfocatura della tabella sottostante e completati i campi prima dell’apertura, per ridurre il lavoro grafico su Windows.
+- Verifiche di apertura ripetuta, annullamento e salvataggio di referenti e persone in formazione.
+
+
 turniamo: pianificazione locale dei turni ospedalieri, in italiano e inglese.
 
 - **Windows x64:** scarica e apri `turniamo-Windows.exe` (portatile, nessun installer).
@@ -10,6 +16,12 @@ Python non è necessario. I pacchetti non hanno firma di distribuzione né notar
 L’app crea un archivio locale vuoto: nessun dato dei medici è incluso. Per aggiornare, chiudi l’app e sostituisci l’eseguibile o il bundle; l’archivio resta nella cartella dati dell’utente. Prima di aggiornare puoi esportare una copia del database dal menu ingranaggio.
 
 ## English
+
+### Changes
+
+- Lighter assignment dialogs: removed background table blur and populated controls before opening, reducing rendering work on Windows.
+- Repeated opening, cancellation and saving checks for supervisors and trainees.
+
 
 turniamo: offline hospital shift planning, in Italian and English.
 

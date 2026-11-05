@@ -92,7 +92,8 @@ dialog.calculation-dialog { width:620px; max-height:85vh; overflow:auto; }
 .breakdown-total { display:flex; justify-content:space-between; padding:15px 6px; }
 dialog .calculation-note { color:#7f8ea0; font-size:11px; }
 dialog { border:1px solid #dde6ed; border-radius:16px; width:420px; padding:24px; color:var(--ink); box-shadow:0 25px 80px #16314525; }
-dialog::backdrop { background:#172b4240; backdrop-filter:blur(2px); }
+/* Keep modal dimming cheap even when WebEngine uses software rendering. */
+dialog::backdrop { background:#172b4240; }
 dialog h2 { font-size:17px; margin:0 0 20px; }
 dialog p { font-size:13px; line-height:1.6; }
 dialog label { display:block; margin:16px 0 7px; font-size:12px; font-weight:600; }

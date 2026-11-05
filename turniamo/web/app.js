@@ -191,17 +191,18 @@ function calculationDialog(doctor,category) {
   table.append(body);d.append(table);
   if(!entries.length)d.append(el('p','',t('no_counted_duties')));
   const total=el('div','breakdown-total');total.append(el('span','',t('total')),el('strong','',formatMinutes(entries.reduce((sum,a)=>sum+a.minutes,0))));d.append(total);
-  const footer=el('div','actions'),close=el('button','primary',t('close'));close.onclick=()=>d.close();footer.append(close);d.append(footer);
+  const footer=el('div','actions'),close=el('button','primary',t('close'));close.onclick=()=>d.close();footer.append(close);d.append(footer);d.showModal();
 }
-function dialogBase(title) {closeMenu();const d=$('#dialog');d.className='';d.replaceChildren(el('h2','',title));if(!d.open)d.showModal();return d;}
+// Populate dialogs while hidden, then enter the modal top layer once complete.
+function dialogBase(title) {closeMenu();const d=$('#dialog');if(d.open)d.close();d.className='';d.replaceChildren(el('h2','',title));return d;}
 function actions(dialog,onSave,saveText=t('save')) {
   const footer=el('div','actions'),cancel=el('button','quiet-button',t('cancel')),save=el('button','primary',saveText);
   cancel.onclick=()=>dialog.close();save.onclick=onSave;footer.append(cancel,save);dialog.append(footer);return save;
 }
-function confirmDialog(title,message,callback) {const d=dialogBase(title);d.append(el('p','',message));actions(d,()=>{d.close();callback();},t('remove'));}
+function confirmDialog(title,message,callback) {const d=dialogBase(title);d.append(el('p','',message));actions(d,()=>{d.close();callback();},t('remove'));d.showModal();}
 function assignmentDialog(a,doctor) {
   const d=dialogBase(doctor.name+' · '+t('assignment_note'));
-  if(a.source_id){d.append(el('p','',t('error_derived')));const close=el('button','primary',t('close'));close.onclick=()=>d.close();d.append(close);return;}
+  if(a.source_id){d.append(el('p','',t('error_derived')));const close=el('button','primary',t('close'));close.onclick=()=>d.close();d.append(close);d.showModal();return;}
   const paidRow=el('div','switch-row');paidRow.append(el('span','',t('paid')));
   const paid=el('button','switch');paid.setAttribute('role','switch');paid.setAttribute('aria-label',t('paid'));paid.setAttribute('aria-checked',String(a.paid));
   paid.disabled=['absence','holiday','recovery'].includes(a.activity);
@@ -211,6 +212,7 @@ function assignmentDialog(a,doctor) {
   const name=el('input');name.type='text';name.id='associate-name';name.value=a.associate_name;name.maxLength=80;name.disabled=!role.value;
   const nameLabel=el('label','',t('associate_name'));nameLabel.htmlFor=name.id;d.append(nameLabel,name);role.onchange=()=>{name.disabled=!role.value;if(role.value)name.focus();};
   actions(d,async()=>{try{await rpc('update_assignment',{id:a.id,paid:paid.getAttribute('aria-checked')==='true',role:role.value,name:role.value?name.value:''});d.close();}catch(_){}});
+  d.showModal();
 }
 function settingsMenu(anchor) {
   closeMenu();$('#popover').replaceChildren(el('div','menu-heading',t('language')));
@@ -222,7 +224,7 @@ function settingsMenu(anchor) {
 function exportMenu(anchor) {closeMenu();$('#popover').replaceChildren();addMenuAction(t('export_excel'),()=>run('export',{kind:'xlsx'}));addMenuAction(t('export_pdf'),()=>run('export',{kind:'pdf'}));showMenu(anchor);}
 function newWeek() {
   const d=dialogBase(t('new_week')),input=el('input');input.type='date';input.value=state.start;input.setAttribute('aria-label',t('date'));d.append(input);
-  actions(d,()=>{if(input.value){d.close();run('week',{date:input.value});}},t('new_week'));input.focus();
+  actions(d,()=>{if(input.value){d.close();run('week',{date:input.value});}},t('new_week'));d.showModal();input.focus();
 }
 function offsetWeek(delta) {const d=new Date(state.start+'T12:00:00');d.setDate(d.getDate()+delta);run('week',{date:[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')});}
 $('#previous').append(icon('left'));$('#next').append(icon('right'));$('#export').append(icon('export'));$('#settings').append(icon('gear'));
