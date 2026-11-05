@@ -43,6 +43,7 @@ jobs:
           QT_QPA_PLATFORM: offscreen
       - run: python scripts/build.py
       - run: python scripts/smoke_packaged.py
+        timeout-minutes: 3
       - name: Prepare Windows download
         if: runner.os == 'Windows'
         shell: pwsh

@@ -154,7 +154,7 @@ i calcoli mantengono i minuti esatti.
 Eseguire sul sistema di destinazione: `dist/turniamo.exe` per Windows (nessuna installazione
 di Python richiesta), `dist/turniamo.app` per macOS. WebEngine è incluso e rende il
 pacchetto più grande. I pacchetti locali non hanno firma di distribuzione/notarizzazione.
-Il workflow GitHub crea e prova entrambi i pacchetti. Un tag come `v0.1.1`, corrispondente
+Il workflow GitHub crea e prova entrambi i pacchetti. Un tag come `v0.1.2`, corrispondente
 alla versione in `pyproject.toml`, pubblica una Release solo dopo il successo di entrambe
 le build e delle verifiche. I pulsanti di download puntano sempre all’ultima Release.
 Da **Actions → Test and package desktop app → Run workflow** si possono creare build
@@ -328,7 +328,7 @@ pages, preserving colours, labels and doctor boxes.
 Build on the target operating system: `dist/turniamo.exe` for Windows (no Python
 installation needed), `dist/turniamo.app` for macOS. Bundled WebEngine increases the
 package size. Local packages are not distribution-signed or notarized. The GitHub
-workflow builds and checks both packages. A tag such as `v0.1.1`, matching the version
+workflow builds and checks both packages. A tag such as `v0.1.2`, matching the version
 in `pyproject.toml`, publishes a Release only after both builds and all checks pass.
 The download buttons always point to the latest Release. Use **Actions → Test and
 package desktop app → Run workflow** for builds without publishing a Release;
