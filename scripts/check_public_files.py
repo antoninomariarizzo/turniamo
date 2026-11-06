@@ -26,7 +26,8 @@ def allowed(name):
         return path.name in {"index.html", "style.css", "app.js"}
     if parent == "turniamo/assets":
         return path.name in ASSETS
-    return name in {".github/workflows/build.yml", ".github/RELEASE_NOTES.md"}
+    return name in {".github/workflows/build.yml", ".github/RELEASE_NOTES.md",
+                    "docs/calendar-demo.png"}
 
 
 def main():
