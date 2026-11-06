@@ -1,6 +1,6 @@
 # turniamo — memoria del progetto e istruzioni per gli agenti
 
-Questo file conserva la storia operativa e le decisioni di prodotto della chat iniziale, fino alla preparazione della v0.1.5 del 6 novembre 2026. Non è una trascrizione verbatim: conserva richieste, correzioni, motivazioni, risultati e vincoli necessari per continuare in una nuova chat. Le istruzioni successive dell’utente prevalgono; non ripristinare regole storiche superate.
+Questo file conserva la storia operativa e le decisioni di prodotto della chat iniziale, fino alla pubblicazione della v0.1.5 del 6 novembre 2026. Non è una trascrizione verbatim: conserva richieste, correzioni, motivazioni, risultati e vincoli necessari per continuare in una nuova chat. Le istruzioni successive dell’utente prevalgono; non ripristinare regole storiche superate.
 
 ## Identità, repository e collaborazione
 
@@ -188,7 +188,8 @@ Workflow **Test and package desktop app**:
 9. **Correzione decisiva dello smonto.** La richiesta iniziale consentiva il pomeriggio dopo guardia notturna; è stata esplicitamente **superata**: dopo guardia/S.N. indisponibilità tutto il giorno, dopo sola reperibilità notturna indisponibilità soltanto al mattino. Selettore settimana spostato a sinistra, schede centrate, eliminato «(+1)».
 10. **Test e pubblicazione v0.1.4.** Pacchetti locali successivi `test`, `test2`, `test3`, `test4`; ultimo test con 91 verifiche superate e smoke macOS. Dopo «Procedi con il deploy», commit `764e33a`, tag v0.1.4, build e smoke riusciti su entrambi i runner, release pubblicata e download HTTP 200. Run: https://github.com/antoninomariarizzo/turniamo/actions/runs/42204387188.
 11. **Bugfix v0.1.5.** Richiesti caratteri PDF Windows corretti, blocco Multidisciplinare durante assenze e avvisi oltre la sola doppia sala. Implementati UTF-8 esplicito, titoli PDF con due punti, disponibilità comune anche agli incarichi informativi e sovrapposizioni mattutine circoscritte alle attività coinvolte. 99 test superati, incluso default cp1252 simulato; build/smoke macOS riusciti e pacchetto locale `dist/turniamo-v0.1.5-macOS-test.zip`.
-12. **Memoria e skill.** Richiesta di riversare la storia in questo `AGENTS.md` e creare una skill di versione/release. Durante il lavoro l’utente ha autorizzato: «release the v0.1.5 and continue the skill creation». Verificare stato remoto della v0.1.5 e commit corrente: questa cronologia non è una prova che un workflow ancora in corso sia terminato.
+12. **Memoria e skill.** Richiesta di riversare la storia in questo `AGENTS.md` e creare una skill di versione/release. Durante il lavoro l’utente ha autorizzato: «release the v0.1.5 and continue the skill creation». La skill personale `turniamo-release` è stata creata e validata; la allowlist pubblica include questo `AGENTS.md`.
+13. **Pubblicazione v0.1.5 verificata.** Commit applicativo/tag `7c6700a` / `v0.1.5`; run https://github.com/antoninomariarizzo/turniamo/actions/runs/42239546193 completato con successo, inclusi test, build e smoke Windows/macOS. Release https://github.com/antoninomariarizzo/turniamo/releases/tag/v0.1.5 pubblica, stabile e latest al momento della verifica; entrambi i pacchetti, checksum e licenza presenti, download Windows/macOS HTTP 200. Questo aggiornamento documentale è successivo al tag: non spostare il tag per includerlo.
 
 ## Come mantenere questa memoria
 
