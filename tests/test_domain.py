@@ -142,3 +142,28 @@ def test_invalid_paid_absence_and_incomplete_associate():
         validate_assignment(entry(A.HOLIDAY, paid=True), [])
     with pytest.raises(RuleError, match="error_associate"):
         validate_assignment(entry(A.CLINIC_AM, associate_role="training"), [])
+
+
+@pytest.mark.parametrize('absence', [A.ABSENCE,A.HOLIDAY,A.RECOVERY])
+def test_multidisciplinary_requires_presence_in_both_orders(absence):
+    leave, multidisciplinary = entry(absence), entry(A.MULTIDISCIPLINARY)
+    with pytest.raises(RuleError,match='error_unavailable'):
+        validate_assignment(multidisciplinary,[leave])
+    with pytest.raises(RuleError,match='error_unavailable'):
+        validate_assignment(leave,[multidisciplinary])
+    validate_assignment(entry(A.MULTIDISCIPLINARY,doctor='b'),[leave])
+    validate_assignment(entry(A.MULTIDISCIPLINARY,day=MONDAY+timedelta(days=1)),[leave])
+    assert minutes_for(multidisciplinary,[multidisciplinary])==0
+    issues=issues_for_week(MONDAY,[leave,multidisciplinary])
+    assert any(i.key=='error_unavailable' and i.activity==A.MULTIDISCIPLINARY for i in issues)
+
+
+def test_morning_overlaps_only_highlight_the_conflicting_assignments():
+    from itertools import combinations
+    from turniamo.domain import MORNING_WORK
+    for first,second in combinations(MORNING_WORK,2):
+        raw=[entry(first),entry(second),entry(A.CLINIC_PM),entry(A.ON_CALL_PM),entry(A.MULTIDISCIPLINARY)]
+        overlap=[i for i in issues_for_week(MONDAY,raw) if i.key=='warning_morning_overlap']
+        assert {i.activity for i in overlap}=={first,second}
+        assert not issues_for_week(MONDAY,[entry(first),entry(second,doctor='b')])
+        assert not issues_for_week(MONDAY,[entry(first),entry(second,day=MONDAY+timedelta(days=1))])

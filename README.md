@@ -111,7 +111,7 @@ aiuti futuri dentro Reparto. L’importazione di vecchi file Excel non è inclus
 ### Riepiloghi mensili e festività
 
 **Multidisciplinare**, tra Ambulatorio e S.N., è una colonna informativa: zero ore,
-nessun conteggio nei riepiloghi e nessuna attività a pagamento.
+nessun conteggio nei riepiloghi e nessuna attività a pagamento. Richiede comunque la presenza: non può coesistere con Assenza, Ferie o Recupero.
 
 Il riepilogo mensile si apre sul mese del lunedì della settimana visualizzata; il selettore permette di consultare altri mesi.
 Conta gli incarichi di CHIR 1/2/3 in tutti i giorni; guardie, reperibilità e ambulatorio
@@ -167,6 +167,8 @@ Excel e PDF includono Calendario, Ore settimanali, Turni mensili e Riepilogo ann
 Il dettaglio in minuti è in un foglio interno nascosto. Excel/LibreOffice ricalcolano le
 formule all’apertura. Nel riepilogo numerico 6h20m = 6,333… ore, visualizzate con due decimali;
 i calcoli mantengono i minuti esatti.
+
+Gli incarichi mattutini contemporanei (sale, Reparto, ACC-W.S., Guardia diurna, Reperibilità e Ambulatorio del mattino) sono evidenziati in arancione. Gli incarichi pomeridiani non ricevono questo avviso.
 
 ### Pacchetti desktop
 
@@ -363,6 +365,8 @@ on opening. In numeric summaries, 6h20m = 6.333… hours, displayed with two dec
 calculations retain exact minutes.
 
 Excel and PDF include Calendar, Weekly hours, Monthly shifts and Annual summary. PDFs use the same HTML/CSS as the interface, with each section on separate pages.
+
+Overlapping morning duties (operating rooms, Ward, ACC-W.S., day duty, morning on-call and morning clinic) are highlighted in orange. Afternoon assignments do not receive this warning. Multidisciplinary assignments require availability and cannot coexist with absence, vacation or compensatory leave.
 
 ### Desktop packages
 

@@ -24,7 +24,7 @@ from .layout import COLUMNS, SUBLABELS, TIMES
 from .storage import Store
 from .presentation import presentation_data
 from .reports import period_reports
-from .domain import effective_assignments, rest_periods, rest_warning
+from .domain import effective_assignments, rest_periods, rest_warning, morning_conflict
 
 
 def default_export_path(filename):
@@ -185,6 +185,8 @@ class Bridge(QObject):
                 except RuleError as exc:
                     error = self.t(exc.key)
             warning = rest_warning(day, doctor.id, activity, periods)
+            if not warning and morning_conflict(day, doctor.id, activity, raw):
+                warning = "warning_morning_overlap"
             result.append({"warning": bool(warning), "id": doctor.id, "name": doctor.name, "selected": bool(entry),
                            "assignment": entry.id if entry else None, "disabled": bool(error), "reason": error or (self.t(warning) if warning else "")})
         return result

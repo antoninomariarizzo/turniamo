@@ -134,7 +134,13 @@ def test_bridge_rejects_absence_and_handles_ward_in_one_cell(app):
 
 
 @pytest.mark.parametrize("language", ["it", "en"])
-def test_exports_pdf_and_excel(app, tmp_path, language):
+def test_exports_pdf_and_excel(app, tmp_path, language, monkeypatch):
+    # Emulate the Windows legacy default, even on UTF-8 development machines.
+    from pathlib import Path
+    original_read = Path.read_text
+    def windows_read(path, encoding=None, errors=None):
+        return original_read(path, encoding=encoding or 'cp1252', errors=errors)
+    monkeypatch.setattr(Path, 'read_text', windows_read)
     store, _, _ = sample_store()
     assignments, doctors = store.week_context(MONDAY), store.week_doctors(MONDAY)
     html = document_html(MONDAY, assignments, doctors, language)
@@ -148,6 +154,9 @@ def test_exports_pdf_and_excel(app, tmp_path, language):
     assert "Rossi" in text and "11h00m" in "".join(text.split())
     assert day_label(MONDAY, language) in text
     assert "B3 071" not in text and "B3 067" not in text
+    assert "Â" not in text and "·" not in text
+    assert tr("schedule", language)+":" in "".join(text.split())
+    assert tr("on_call_group", language) in text
     xlsx = tmp_path / f"schedule-{language}.xlsx"
     export_excel(xlsx, MONDAY, assignments, doctors, language)
     workbook = load_workbook(xlsx)
@@ -260,3 +269,38 @@ def test_other_dialogs_open_complete_and_can_be_dismissed(app, kind):
     assert len(store.raw_assignments()) == 4
     window.close()
     store.close()
+
+
+@pytest.mark.parametrize('absence',[A.ABSENCE,A.HOLIDAY,A.RECOVERY])
+def test_multidisciplinary_disabled_in_picker_and_rejected_by_storage(app,absence):
+    from turniamo.domain import RuleError
+    store=Store(':memory:');doctor=store.save_doctor('Demo');store.create_week(MONDAY)
+    store.save_assignment(Assignment('leave',MONDAY,absence,doctor))
+    bridge=Bridge(store);bridge.start=MONDAY
+    assert bridge.choices(MONDAY,A.MULTIDISCIPLINARY)[0]['disabled']
+    with pytest.raises(RuleError,match='error_unavailable'):
+        store.set_slot_doctors(MONDAY,A.MULTIDISCIPLINARY,[doctor])
+    assert len(store.raw_assignments())==1
+    store.close()
+
+
+def test_morning_overlap_picker_calendar_and_excel(app):
+    from turniamo.exports import export_cells
+    from turniamo.layout import COLUMNS
+    store=Store(':memory:');doctor=store.save_doctor('Demo');store.create_week(MONDAY)
+    store.set_setting('last_week',MONDAY.isoformat())
+    store.save_assignment(Assignment('surgery',MONDAY,A.SURGERY_2,doctor))
+    bridge=Bridge(store);bridge.start=MONDAY
+    for activity in (A.SURGERY_URGENT,A.SURGERY_3,A.WEEK_SERVICE,A.DAY_DUTY,A.CLINIC_AM):
+        assert bridge.choices(MONDAY,activity)[0]['warning']
+    assert not bridge.choices(MONDAY,A.CLINIC_PM)[0]['warning']
+    for activity in (A.CLINIC_AM,A.CLINIC_PM):
+        store.save_assignment(Assignment(activity,MONDAY,activity,doctor))
+    window=MainWindow(store);window.show();wait_js(window,'window.turniamoReady===true')
+    assert js(window,"document.querySelectorAll('.assignment.warning').length")==2
+    assert not js(window,"document.querySelector('[data-activity=clinic_pm] .assignment').classList.contains('warning')")
+    cells=export_cells(MONDAY,store.week_context(MONDAY),store.week_doctors(MONDAY),'it')
+    col=next(i for i,(key,_) in enumerate(COLUMNS,1) if key=='clinic_group')
+    warnings={(row,column):warning for row,column,_,_,warning in cells}
+    assert warnings[(0,col)] and not warnings[(3,col)]
+    window.close();store.close()

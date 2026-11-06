@@ -147,7 +147,7 @@ TEXT = {
     "error_backup_path": ("La copia deve avere un percorso diverso dall’archivio in uso.", "The backup path must differ from the current database."),
     "warning_after_on_call_night": ("Dopo la reperibilità notturna: indisponibile la mattina", "After night on-call: unavailable in the morning"),
     "warning_after_night_off": ("Smonto notte: indisponibile per tutta la giornata", "Post-night rest: unavailable all day"),
-    "warning_multiple_surgeries": ("Medico assegnato a più sale nello stesso giorno: verificare", "Doctor assigned to multiple operating rooms on the same day: review"),
+    "warning_morning_overlap": ("Medico assegnato a più incarichi al mattino: verificare", "Doctor assigned to multiple morning duties: review"),
     "warning_own_help": ("Stesso medico come responsabile e aiuto reparto: verificare", "Same doctor assigned as ward lead and helper: review"),
     "week_picker_hint": ("Scegli un giorno: verrà aperta la settimana da lunedì a domenica. Se esiste già, sarà caricata.",
                          "Choose a date to open its Monday–Sunday week. An existing week will be loaded."),

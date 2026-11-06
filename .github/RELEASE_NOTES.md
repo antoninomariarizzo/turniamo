@@ -1,17 +1,10 @@
 ## Italiano
 
-### Novità
+### Correzioni
 
-- Barra semplificata: Calendario, Ore settimanali, Turni mensili e Riepilogo annuale; icone Medici, Esporta e Impostazioni in alto a destra. Excel e PDF includono tutte e quattro le sezioni.
-- Recupero e smonto notte incompatibili, anche tra settimane diverse.
-- Terza fascia di reperibilità 20:00–08:00, senza ore né conteggi; mattina successiva in arancione, pomeriggio disponibile.
-- Conteggi annuali degli ambulatori e delle notti a pagamento, con dettagli.
-
-- CHIR 1, CHIR 2 e CHIR 3; nuova colonna informativa Multidisciplinare da zero ore.
-- Smonto notte: avviso su tutti i turni della giornata; dopo reperibilità notturna, avviso solo al mattino. La cella S.N. non viene evidenziata.
-- Riepilogo mensile degli incarichi e riepilogo annuale delle festività, con selettori di periodo.
-- Festività comprensive delle ore dopo mezzanotte, con elenchi e dettagli tramite icone “i”; riepiloghi aperti sul periodo della settimana visualizzata.
-- Backup automatico prima dell’aggiornamento dell’archivio; usare v0.1.4 o successive per riaprirlo.
+- PDF su Windows: lettura UTF-8 esplicita delle risorse e separatore “:” nei titoli, per evitare caratteri alterati.
+- Multidisciplinare non assegnabile a medici assenti, in ferie o in recupero; controllo in entrambi gli ordini di inserimento.
+- Avvisi per sovrapposizioni tra incarichi mattutini, estesi a Reparto, ACC-W.S., Guardia diurna, Reperibilità e Ambulatorio del mattino. Gli incarichi pomeridiani non vengono evidenziati per queste sovrapposizioni.
 
 turniamo: pianificazione locale dei turni ospedalieri, in italiano e inglese.
 
@@ -24,18 +17,11 @@ L’app crea un archivio locale vuoto: nessun dato dei medici è incluso. Per ag
 
 ## English
 
-### Changes
+### Fixes
 
-- Simplified toolbar: Calendar, Weekly hours, Monthly shifts and Annual summary; Doctors, Export and Settings icons at the top right. Excel and PDF include all four sections.
-- Compensatory leave and night-off are mutually exclusive, including across weeks.
-- Third on-call slot, 20:00–08:00, with zero hours and no counts; following morning highlighted, afternoon available.
-- Annual paid clinic and paid night counts, with details.
-
-- SURG 1, SURG 2 and SURG 3; informational Multidisciplinary column with zero hours.
-- Post-night rest warns on every assignment that day; night on-call warns only on the following morning. The night-off cell itself is not highlighted.
-- Monthly assignment counts and annual holiday attendance counts, with period selectors.
-- Holiday attendance includes hours after midnight, with information buttons for holiday lists and count details; reports open on the displayed week’s period.
-- Automatic backup before archive upgrade; use v0.1.4 or later to reopen it.
+- Windows PDFs: explicit UTF-8 resource decoding and “:” heading separators prevent corrupted characters.
+- Multidisciplinary assignments cannot coexist with absence, vacation or compensatory leave, regardless of insertion order.
+- Morning overlap warnings now cover Ward, ACC-W.S., day duty, morning on-call and morning clinic as well as operating rooms. Afternoon assignments are not highlighted for these overlaps.
 
 turniamo: offline hospital shift planning, in Italian and English.
 

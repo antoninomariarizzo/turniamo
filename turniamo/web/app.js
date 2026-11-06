@@ -268,7 +268,7 @@ if(window.turniamoPrintState) {
   const main=$('#main');main.replaceChildren();
   for(const [name,draw] of [['schedule',renderSchedule],['summary',renderSummary],['monthly',()=>renderPeriodReport('monthly')],['festivities',()=>renderPeriodReport('festivities')]]) {
     draw();const table=main.lastElementChild,section=el('section','print-section '+name+'-section');
-    section.append(el('h2','print-heading',t(name)+' · '+(name==='monthly'?state.reports.month:name==='festivities'?state.reports.year:state.weekLabel)),table);main.append(section);
+    section.append(el('h2','print-heading',t(name)+': '+(name==='monthly'?state.reports.month:name==='festivities'?state.reports.year:state.weekLabel)),table);main.append(section);
   }
   // Hidden export pages do not receive animation frames. Font readiness is
   // sufficient; printToPdf performs the final layout at the target page size.

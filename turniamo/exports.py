@@ -59,10 +59,10 @@ def document_html(start, assignments, doctors, language, reports=None):
     state = presentation_data(start, assignments, doctors, language)
     state["reports"] = reports if reports is not None else period_reports(start.replace(day=1), assignments, doctors)
     data = json.dumps(state).replace("<", "\\u003c")
-    html = "\n".join(line for line in (web / "index.html").read_text().splitlines()
+    html = "\n".join(line for line in (web / "index.html").read_text(encoding="utf-8").splitlines()
                      if not any(marker in line for marker in ('<script ', '<link ', 'Content-Security-Policy')))
-    html = html.replace("</head>", "<style>" + (web / "style.css").read_text() + "</style></head>")
-    script = "<script>window.turniamoPrintState=" + data + ";\n" + (web / "app.js").read_text() + "</script>"
+    html = html.replace("</head>", "<style>" + (web / "style.css").read_text(encoding="utf-8") + "</style></head>")
+    script = "<script>window.turniamoPrintState=" + data + ";\n" + (web / "app.js").read_text(encoding="utf-8") + "</script>"
     return html.replace("</body>", script + "</body>")
 
 

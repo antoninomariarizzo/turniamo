@@ -33,6 +33,9 @@ SURGERIES = frozenset((Activity.SURGERY_URGENT, Activity.SURGERY_2, Activity.SUR
 ABSENCES = frozenset((Activity.ABSENCE, Activity.HOLIDAY, Activity.RECOVERY))
 WORK = frozenset(ACTIVITIES) - ABSENCES - {Activity.NIGHT_OFF, Activity.MULTIDISCIPLINARY, Activity.ON_CALL_NIGHT}
 
+# Informational duties still require the doctor to be present.
+AVAILABILITY_REQUIRED = frozenset(ACTIVITIES) - ABSENCES - {Activity.NIGHT_OFF}
+
 
 class RuleError(ValueError):
     """An invalid proposed change, with a translatable message key."""
@@ -192,13 +195,20 @@ def validate_assignment(proposal: Assignment, raw: list[Assignment]) -> None:
     # Night-off counts a previous night's work. Leave on that calendar day does
     # not introduce a new work assignment and is therefore allowed.
     if proposal.activity in ABSENCES:
-        if any(a.activity in WORK | {Activity.ON_CALL_NIGHT} or a.activity in ABSENCES for a in same):
+        if any(a.activity in AVAILABILITY_REQUIRED | ABSENCES for a in same):
             raise RuleError("error_unavailable")
-    elif proposal.activity in WORK | {Activity.ON_CALL_NIGHT} and any(a.activity in ABSENCES for a in same):
+    elif proposal.activity in AVAILABILITY_REQUIRED and any(a.activity in ABSENCES for a in same):
         raise RuleError("error_unavailable")
 
 
 MORNING_WORK = SURGERIES | {Activity.WARD, Activity.WARD_HELP, Activity.WEEK_SERVICE, Activity.DAY_DUTY, Activity.ON_CALL_AM, Activity.CLINIC_AM}
+
+
+def morning_conflict(day, doctor_id, activity, assignments):
+    return activity in MORNING_WORK and any(
+        a.day == day and a.doctor_id == doctor_id and a.activity in MORNING_WORK
+        and a.activity != activity for a in assignments
+    )
 
 
 def rest_periods(assignments):
@@ -223,13 +233,13 @@ def issues_for_week(start: date, assignments: list[Assignment]) -> list[Issue]:
         warning = rest_warning(a.day, a.doctor_id, a.activity, periods)
         if start <= a.day <= start + timedelta(days=6) and warning:
             issues.add(Issue(warning, a.doctor_id, a.day, activity=a.activity))
-        if not start <= a.day <= start + timedelta(days=6) or a.activity not in WORK:
+        if not start <= a.day <= start + timedelta(days=6) or a.activity not in AVAILABILITY_REQUIRED:
             continue
         same = [b for b in assignments if b.day == a.day and b.doctor_id == a.doctor_id]
         if any(b.activity in ABSENCES for b in same):
-            issues.add(Issue("error_unavailable", a.doctor_id, a.day, "error"))
-        if a.activity in SURGERIES and sum(b.activity in SURGERIES for b in same) > 1:
-            issues.add(Issue("warning_multiple_surgeries", a.doctor_id, a.day))
+            issues.add(Issue("error_unavailable", a.doctor_id, a.day, "error", activity=a.activity))
+        if morning_conflict(a.day, a.doctor_id, a.activity, same):
+            issues.add(Issue("warning_morning_overlap", a.doctor_id, a.day, activity=a.activity))
         if a.activity == Activity.WARD and any(b.activity == Activity.WARD_HELP for b in same):
             issues.add(Issue("warning_own_help", a.doctor_id, a.day))
     return sorted(issues, key=lambda i: (i.day, i.doctor_id, i.key, i.activity or ""))
