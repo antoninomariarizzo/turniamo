@@ -7,11 +7,11 @@ button:disabled { cursor:default; opacity:.42; }
 button:focus-visible,input:focus-visible,select:focus-visible,[tabindex]:focus-visible { outline:2px solid #40a39a; outline-offset:2px; }
 button { border:0; background:transparent; }
 svg { width:19px; height:19px; fill:none; stroke:currentColor; stroke-width:1.65; stroke-linecap:round; stroke-linejoin:round; flex-shrink:0; }
-.toolbar { display:flex; align-items:center; gap:14px; height:62px; padding:10px 18px; flex-shrink:0; }
-nav { display:flex; gap:3px; padding:3px; border:1px solid #e6eaf0; background:#eef1f5; border-radius:10px; }
+.toolbar { display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); align-items:center; gap:14px; height:62px; padding:10px 18px; flex-shrink:0; }
+nav { grid-column:2; justify-self:center; display:flex; gap:3px; padding:3px; border:1px solid #e6eaf0; background:#eef1f5; border-radius:10px; }
 nav button { padding:8px 13px; color:#718095; border-radius:7px; white-space:nowrap; font-weight:550; font-size:12px; }
 nav button.selected { background:white; color:var(--accent); box-shadow:0 1px 3px #192f4520; }
-.week-controls { display:flex; align-items:center; gap:3px; margin-left:auto; }
+.week-controls { display:flex; align-items:center; gap:3px; grid-column:1; justify-self:start; }
 select { border:0; background:transparent; padding:8px; font-size:12px; font-weight:600; border-radius:7px; max-width:260px; }
 .icon-button { width:34px; height:34px; display:inline-flex; align-items:center; justify-content:center; border-radius:8px; color:#66788c; }
 .icon-button:hover,.quiet-button:hover { background:#e9eef3; color:var(--ink); }
@@ -117,3 +117,26 @@ dialog .actions { margin-top:24px; display:flex; justify-content:flex-end; gap:8
 .print-document .cell { height:auto !important; }
 .print-document .more,.print-document .slot-empty,.print-document .info-button { display:none !important; }
 .print-document * { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+
+.toolbar { flex-wrap:wrap; height:auto; min-height:62px; }
+nav { flex-wrap:wrap; }
+.choice.warning { background:var(--orange); color:#8b591b; }
+.period-report { padding:20px; }
+.period-controls { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.period-controls h2 { font-size:18px; }
+.period-controls input { margin-left:12px; padding:8px; border:1px solid var(--line); border-radius:6px; }
+.report-note { color:#66788c; line-height:1.5; }
+.report-table th,.report-table td { padding:12px 10px; }
+.report-table thead th { white-space:normal; }
+.report-table th:first-child { min-width:130px; }
+
+.schedule thead th { overflow-wrap:anywhere; }
+
+.tools { grid-column:3; justify-self:end; }
+.tools .selected { background:var(--tint); color:var(--accent); }
+nav button[data-tab=schedule] { display:flex; align-items:center; justify-content:center; }
+.print-document .print-section + .print-section { break-before:page; }
+.print-document .period-controls,.print-document .info-button { display:none !important; }
+.print-document .period-report { padding:0; }
+
+@media(max-width:960px) { .toolbar { grid-template-columns:1fr auto; } .toolbar nav { grid-row:2; grid-column:1 / -1; } .tools { grid-column:2; } }

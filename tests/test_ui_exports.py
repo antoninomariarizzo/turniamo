@@ -53,8 +53,8 @@ def test_html_direct_assignment_edit_remove_language_and_compact_layout(app, tmp
     window.show()
     wait_js(window, "window.turniamoReady === true")
     assert window.windowTitle() == "turniamo"
-    assert js(window, "document.querySelectorAll('#tabs button').length") == 3
-    assert js(window, "document.querySelectorAll('.schedule thead th').length") == 12
+    assert js(window, "document.querySelectorAll('#tabs button').length") == 4
+    assert js(window, "document.querySelectorAll('.schedule thead th').length") == 14
     assert js(window, "document.querySelector('.schedule tbody th').textContent") == "07 LU"
     assert js(window, "document.querySelector('main').scrollWidth <= document.querySelector('main').clientWidth+1")
     assert not js(window, "document.body.textContent.includes('Pianificazione settimanale')")
@@ -142,20 +142,21 @@ def test_exports_pdf_and_excel(app, tmp_path, language):
     export_pdf(path, html)
     pdf = QPdfDocument()
     assert pdf.load(str(path)) == QPdfDocument.Error.None_
-    assert pdf.pageCount() == 2
+    assert pdf.pageCount() == 4
     text = "\n".join(pdf.getAllText(i).text() for i in range(pdf.pageCount()))
     # QtPdf may insert line breaks between individual Chromium PDF glyphs.
     assert "Rossi" in text and "11h00m" in "".join(text.split())
     assert day_label(MONDAY, language) in text
-    assert "B3 071" in text and "B3 067" in text
+    assert "B3 071" not in text and "B3 067" not in text
     xlsx = tmp_path / f"schedule-{language}.xlsx"
     export_excel(xlsx, MONDAY, assignments, doctors, language)
     workbook = load_workbook(xlsx)
-    assert workbook.worksheets[0].max_column == 12
+    assert [w.title for w in workbook if w.sheet_state == 'visible'] == [tr(k, language) for k in ('schedule','summary','monthly','festivities')]
+    assert workbook.worksheets[0].max_column == 14
     assert workbook.worksheets[1].max_column == 4
     assert workbook.worksheets[0]['A3'].value == day_label(MONDAY, language)
     assert 'SUMIFS' in workbook.worksheets[1]['B5'].value
-    details = list(workbook.worksheets[2].values)[1:]
+    details = list(workbook.worksheets[4].values)[1:]
     assert sum(r[6] for r in details if r[3] == tr('yes', language)) == 780
     assert sum(r[6] for r in details if r[1] == 'Rossi M.') == 660
 
@@ -170,7 +171,7 @@ def test_exports_escape_names_and_formulas(app, tmp_path):
     export_excel(path, MONDAY, assignments, doctors, 'en')
     book = load_workbook(path)
     assert book.worksheets[1]['A5'].data_type == 's'
-    assert book.worksheets[2]['B2'].data_type == 's'
+    assert book.worksheets[4]['B2'].data_type == 's'
 
 
 def test_all_translations_are_present():
@@ -240,15 +241,13 @@ def test_assignment_dialog_reopens_cancels_and_saves_associate(app, role):
     store.close()
 
 
-@pytest.mark.parametrize('kind', ['new_week', 'remove_doctor', 'derived_assignment'])
+@pytest.mark.parametrize('kind', ['remove_doctor', 'derived_assignment'])
 def test_other_dialogs_open_complete_and_can_be_dismissed(app, kind):
     store, _, _ = sample_store()
     window = MainWindow(store)
     window.show()
     wait_js(window, 'window.turniamoReady === true')
-    if kind == 'new_week':
-        js(window, "document.querySelector('#new-week').click()")
-    elif kind == 'remove_doctor':
+    if kind == 'remove_doctor':
         js(window, "document.querySelector('[data-tab=doctors]').click();document.querySelector('.trash').click()")
     else:
         js(window, "document.querySelector('[data-activity=night_off] .more').click()")

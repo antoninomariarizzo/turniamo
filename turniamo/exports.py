@@ -7,6 +7,7 @@ from .domain import Activity, issues_for_week, minutes_for
 from .i18n import day_label, tr, week_label
 from .layout import COLUMNS, TIMES
 from .presentation import presentation_data
+from .reports import period_reports
 
 
 def visible_doctors(doctors, assignments, start):
@@ -31,30 +32,33 @@ def slot_text(day, activities, assignments, names, language):
 
 
 def export_cells(start, assignments, doctors, language):
-    """Physical cell coordinates shared by PDF and Excel; two rows per day."""
+    """Physical cell coordinates shared by PDF and Excel; six physical rows per day for halves and thirds."""
     names = {d.id: d.name for d in doctors}
-    flagged = {(i.day, i.doctor_id) for i in issues_for_week(start, assignments)}
+    flagged = issues_for_week(start, assignments)
     cells = []
     for n in range(7):
-        day, row = start + timedelta(days=n), n * 2
-        cells.append((row, 0, day_label(day, language), 2, False))
+        day, row = start + timedelta(days=n), n * 6
+        cells.append((row, 0, day_label(day, language), 6, False))
         for col, (key, activities) in enumerate(COLUMNS, start=1):
-            paired = key in ("duty_group", "on_call_group", "clinic_group")
-            for half in range(2 if paired else 1):
-                selected = (activities[half],) if paired else activities
+            slots = len(activities) if key in ("duty_group", "on_call_group", "clinic_group") else 1
+            span = 6 // slots
+            for half in range(slots):
+                selected = (activities[half],) if slots > 1 else activities
                 text = slot_text(day, selected, assignments, names, language)
                 if selected[0] in TIMES:
                     text = TIMES[selected[0]] + ("\n" + text if text else "")
-                warning = any((a.day, a.doctor_id) in flagged for a in assignments if a.day == day and a.activity in selected)
-                cells.append((row+half, col, text, 1 if paired else 2, warning))
+                warning = any(any(i.day == a.day and i.doctor_id == a.doctor_id and (i.activity is None or i.activity == a.activity) for i in flagged) for a in assignments if a.day == day and a.activity in selected)
+                cells.append((row+half*span, col, text, span, warning))
     return sorted(cells)
 
 
-def document_html(start, assignments, doctors, language):
+def document_html(start, assignments, doctors, language, reports=None):
     web = Path(__file__).parent / "web"
     # Inline local assets so the export has exactly the same renderer/styles as
     # the desktop UI. Escape script delimiters in user-provided names and notes.
-    data = json.dumps(presentation_data(start, assignments, doctors, language)).replace("<", "\\u003c")
+    state = presentation_data(start, assignments, doctors, language)
+    state["reports"] = reports if reports is not None else period_reports(start.replace(day=1), assignments, doctors)
+    data = json.dumps(state).replace("<", "\\u003c")
     html = "\n".join(line for line in (web / "index.html").read_text().splitlines()
                      if not any(marker in line for marker in ('<script ', '<link ', 'Content-Security-Policy')))
     html = html.replace("</head>", "<style>" + (web / "style.css").read_text() + "</style></head>")
@@ -115,7 +119,7 @@ def export_pdf(path, html):
     Path(path).write_bytes(result[0])
 
 
-def export_excel(path, start, assignments, doctors, language):
+def export_excel(path, start, assignments, doctors, language, reports=None):
     from openpyxl import Workbook
     from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
     from openpyxl.utils import get_column_letter
@@ -127,6 +131,9 @@ def export_excel(path, start, assignments, doctors, language):
     schedule = workbook.active
     schedule.title = t("schedule")
     summary = workbook.create_sheet(t("summary"))
+    reports = reports if reports is not None else period_reports(start.replace(day=1), assignments, doctors)
+    monthly = workbook.create_sheet(t("monthly"))
+    annual = workbook.create_sheet(t("festivities"))
     detail = workbook.create_sheet(t("assignment"))
     detail.sheet_state = "hidden"
     names = {d.id: d.name for d in doctors}
@@ -138,14 +145,14 @@ def export_excel(path, start, assignments, doctors, language):
         cell = schedule.cell(row+3, col+1, text)
         if warning:
             cell.fill = PatternFill("solid", fgColor="FFF0D7")
-        if span == 2:
-            schedule.merge_cells(start_row=row+3, start_column=col+1, end_row=row+4, end_column=col+1)
-        height = max(34, ((text.count("\n") + 1) * 14 + 10) / span)
+        if span > 1:
+            schedule.merge_cells(start_row=row+3, start_column=col+1, end_row=row+2+span, end_column=col+1)
+        height = max(12, ((text.count("\n") + 1) * 14 + 10) / span)
         for offset in range(span):
-            schedule.row_dimensions[row+3+offset].height = max(schedule.row_dimensions[row+3+offset].height or 34, height)
+            schedule.row_dimensions[row+3+offset].height = max(schedule.row_dimensions[row+3+offset].height or 12, height)
     schedule.freeze_panes = "B3"
     schedule.print_title_rows = "1:2"
-    schedule.print_area = f"A1:{get_column_letter(count)}16"
+    schedule.print_area = f"A1:{get_column_letter(count)}44"
     for col in range(1, count+1):
         schedule.column_dimensions[get_column_letter(col)].width = 13 if col == 1 else 23
     detail.append([t(k) for k in ("date", "doctor", "activity", "paid", "associate", "associate_name", "minutes")]+["doctor_id", "category"])
@@ -181,7 +188,17 @@ def export_excel(path, start, assignments, doctors, language):
                 formula=[f'D5="{t(status)}"'], fill=PatternFill("solid", fgColor=color)))
     summary.freeze_panes = "B5"
     summary.print_title_rows = "1:4"
-    for sheet, header in ((schedule, 2), (summary, 4), (detail, 1)):
+    for sheet, label, rows, columns, period in (
+        (monthly, 'monthly', reports['monthly'], reports['columns'], reports['month']),
+        (annual, 'festivities', reports['festivities'], ['festive','special','paid_clinic','paid_nights'], str(reports['year']))):
+        sheet.append([t(label) + ' · ' + period])
+        sheet.merge_cells(start_row=1,start_column=1,end_row=1,end_column=len(columns)+1)
+        sheet.append([t('report_person')] + [t(key) for key in columns])
+        for entry in rows:
+            sheet.append([entry['name']] + [entry['counts'][key] for key in columns])
+        sheet.freeze_panes='B3'
+        sheet.print_title_rows='1:2'
+    for sheet, header in ((schedule, 2), (summary, 4), (monthly,2), (annual,2), (detail, 1)):
         sheet.sheet_view.showGridLines = False
         sheet.sheet_properties.pageSetUpPr.fitToPage = True
         sheet.page_setup.orientation = "landscape"

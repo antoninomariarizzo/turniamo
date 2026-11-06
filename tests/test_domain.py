@@ -75,13 +75,14 @@ def test_manual_night_off_does_not_double_automatic_or_override_paid():
     assert all(a.paid for a in effective)
 
 
-def test_night_warning_is_day_after_night_off_not_same_day_and_trainee_is_ignored():
+def test_night_warning_is_on_night_off_morning_and_trainee_is_ignored():
     night = entry(A.NIGHT_DUTY)
     work_sn = entry(A.CLINIC_AM, day=MONDAY + timedelta(days=1))
     work_after_sn = entry(A.SURGERY_2, day=MONDAY + timedelta(days=2))
     trainee = entry(A.CLINIC_PM, day=MONDAY + timedelta(days=2), doctor="b", associate_role="training", associate_name="Alpha")
     issues = issues_for_week(MONDAY, effective_assignments([night, work_sn, work_after_sn, trainee]))
-    assert [(i.key, i.day, i.doctor_id) for i in issues] == [("warning_after_night_off", MONDAY + timedelta(days=2), "a")]
+    assert {(i.key, i.day, i.doctor_id) for i in issues} == {("warning_after_night_off", MONDAY + timedelta(days=1), "a")}
+    assert {i.activity for i in issues} == {A.CLINIC_AM}
 
 
 @pytest.mark.parametrize("absence", [A.HOLIDAY, A.RECOVERY, A.ABSENCE])

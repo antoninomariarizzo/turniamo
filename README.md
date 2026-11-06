@@ -67,14 +67,14 @@ si può sceglierla con `--data-dir /percorso/archivio`.
 
 ### Interfaccia
 
-- Tre schede: **Orario settimanale**, **Medici**, **Riepilogo ore**.
+- Quattro schede: **Calendario** (icona), **Ore settimanali**, **Turni mensili**, **Riepilogo annuale**. Medici, Esporta e Impostazioni sono accessibili dalle icone in alto a destra.
 - Tabella compatta di default. Giorni nel formato `07 LU`, `08 MA`, ecc. In inglese `07 MO`.
-- Due sale: **CHIR URG B3 071** e **CHIR 2 B3 067**; **Reparto**; **ACC-W.S.**;
+- Tre sale: **CHIR 1**, **CHIR 2** e **CHIR 3**; **Reparto**; **ACC-W.S.**;
   **Guardia** con giorno/notte; **Reperibilità** e **Ambulatorio** con mattino/pomeriggio;
   **S.N.**, **Assenza**, **Ferie**, **Recupero**.
 - Le fasce mostrano gli orari esatti: sale 07:45–15:00; reparto 07:45–17:00;
   ACC-W.S. 07:45–14:00; guardia 07:45–20:30 / 19:45–08:30;
-  reperibilità 07:45–14:00 / 14:00–18:00; ambulatorio 07:45–13:30 / 15:00–19:00.
+  reperibilità 07:45–14:00 / 14:00–18:00 / 20:00–08:00; ambulatorio 07:45–13:30 / 15:00–19:00.
   Queste etichette non modificano i pesi orari concordati.
 - Un clic su una cella apre l’elenco dei medici. Si possono cercare e spuntare più nomi
   senza chiudere il menu. **✓ Conferma / Invio** salva insieme le scelte; **✕ Annulla / Esc**
@@ -104,9 +104,31 @@ dell’utente. Il database contiene medici, settimane, incarichi e lingua.
 
 L’importazione sostituisce l’archivio solo dopo verifica del database e conferma. Prima
 della sostituzione salva una copia nella sottocartella `backups`. Anche la migrazione dalla
-prima versione crea una copia: gli incarichi delle vecchie colonne **Sala chirurgia 3** e
-**Aiuto reparto** vengono eliminati. La nuova versione gestisce eventuali
+prima versione crea una copia: gli incarichi della vecchia colonna **Aiuto reparto**
+vengono eliminati; quelli di **CHIR 3** sono conservati. La nuova versione gestisce eventuali
 aiuti futuri dentro Reparto. L’importazione di vecchi file Excel non è inclusa.
+
+### Riepiloghi mensili e festività
+
+**Multidisciplinare**, tra Ambulatorio e S.N., è una colonna informativa: zero ore,
+nessun conteggio nei riepiloghi e nessuna attività a pagamento.
+
+Il riepilogo mensile si apre sul mese del lunedì della settimana visualizzata; il selettore permette di consultare altri mesi.
+Conta gli incarichi di CHIR 1/2/3 in tutti i giorni; guardie, reperibilità e ambulatorio
+solo dal lunedì al venerdì. Sabato/Domenica giorno/notte contano esclusivamente le guardie.
+Mattina e pomeriggio di ambulatorio o reperibilità sono incarichi distinti.
+
+Il riepilogo annuale si apre sull’anno del lunedì della settimana visualizzata ed è consultabile anche per altri anni.
+Conta una presenza per medico al giorno, indipendentemente dal numero di incarichi,
+includendo il lavoro a pagamento e le prime ore dello smonto notte; sono esclusi assenze, ferie, recuperi e Multidisciplinare.
+Festività: 25 aprile, 1 maggio, 2 giugno, 4 ottobre, 1 novembre, 8 e 26 dicembre.
+Festività speciali: 1 e 6 gennaio, Pasqua, Pasquetta, 15 agosto e 25 dicembre.
+In caso di coincidenza la data conta solo fra le festività speciali.
+Nel mensile le notti contano nel giorno di inizio; nelle festività conta anche il giorno dello smonto, se festivo. Le icone “i” mostrano le festività incluse e il dettaglio di ogni totale. I riepiloghi includono tutti gli incarichi registrati
+nel periodo, anche quelli pianificati, e conservano le persone rimosse.
+
+L’aggiornamento crea una copia dell’archivio prima di portarlo alla versione 3.
+Usare la v0.1.4 o successive per riaprire l’archivio aggiornato.
 
 ### Conteggi
 
@@ -133,14 +155,15 @@ Non vengono segnalati i totali sotto le 38h.
 Le attività a pagamento, incluso lo smonto di una notte a pagamento, sono sempre separate.
 Referenti e persone in formazione non ricevono ore e non hanno controlli di disponibilità.
 
-Notte lunedì → S.N. martedì → avviso arancione per incarichi mercoledì.
+Guardia notturna lunedì → smonto notte martedì: tutti i turni assegnati martedì sono in arancione, anche nel pomeriggio. Reperibilità notturna lunedì → solo i turni mattutini di martedì in arancione, pomeriggio disponibile. La cella S.N. e mercoledì non ricevono questo avviso. La reperibilità notturna è informativa: zero ore, esclusa dai conteggi e non genera S.N.
+Recupero e S.N. sono incompatibili: anche la notte precedente a un recupero è disabilitata.
+Il riepilogo annuale include ambulatori e notti a pagamento: ogni fascia ambulatoriale conta un incarico, ogni notte conta una volta nella data di inizio, anche nel fine settimana.
 Assenza, ferie e recupero impediscono incarichi lavorativi nello stesso giorno. Lo smonto
 è derivato automaticamente anche tra settimane; si modifica dalla notte di origine.
 Se manca la notte precedente nell’archivio è possibile inserire S.N. manualmente.
 
 L’Excel esportato usa le stesse colonne, fasce sovrapposte e un riepilogo con formule.
-Il PDF è generato dallo stesso HTML/CSS dell’interfaccia: include la tabella e il
-riepilogo su pagine separate, conservando colori, etichette e riquadri dei medici.
+Excel e PDF includono Calendario, Ore settimanali, Turni mensili e Riepilogo annuale. Il PDF usa lo stesso HTML/CSS dell’interfaccia, con ciascuna sezione su pagine separate.
 Il dettaglio in minuti è in un foglio interno nascosto. Excel/LibreOffice ricalcolano le
 formule all’apertura. Nel riepilogo numerico 6h20m = 6,333… ore, visualizzate con due decimali;
 i calcoli mantengono i minuti esatti.
@@ -154,7 +177,7 @@ i calcoli mantengono i minuti esatti.
 Eseguire sul sistema di destinazione: `dist/turniamo.exe` per Windows (nessuna installazione
 di Python richiesta), `dist/turniamo.app` per macOS. WebEngine è incluso e rende il
 pacchetto più grande. I pacchetti locali non hanno firma di distribuzione/notarizzazione.
-Il workflow GitHub crea e prova entrambi i pacchetti. Un tag come `v0.1.3`, corrispondente
+Il workflow GitHub crea e prova entrambi i pacchetti. Un tag come `v0.1.4`, corrispondente
 alla versione in `pyproject.toml`, pubblica una Release solo dopo il successo di entrambe
 le build e delle verifiche. I pulsanti di download puntano sempre all’ultima Release.
 Da **Actions → Test and package desktop app → Run workflow** si possono creare build
@@ -237,13 +260,13 @@ Use the gear menu to switch the interface language.
 
 ### Interface
 
-- Three tabs: **Weekly schedule**, **Doctors**, **Hours summary**.
+- Four tabs: **Calendar** (icon), **Weekly hours**, **Monthly shifts**, **Annual summary**. Doctors, Export and Settings are available through the top-right icons.
 - Compact table by default, with day labels such as `07 MO` (`07 LU` in Italian).
-- Two operating rooms: **CHIR URG B3 071** and **CHIR 2 B3 067**; ward; **ACC-W.S.**;
+- Three operating rooms: **SURG 1**, **SURG 2** and **SURG 3**; ward; **ACC-W.S.**;
   day/night duty; morning/afternoon on-call and outpatient clinic; post-night rest,
   absence, vacation and compensatory leave.
 - Time labels: operating rooms 07:45–15:00; ward 07:45–17:00; ACC-W.S. 07:45–14:00;
-  duty 07:45–20:30 / 19:45–08:30; on-call 07:45–14:00 / 14:00–18:00;
+  duty 07:45–20:30 / 19:45–08:30; on-call 07:45–14:00 / 14:00–18:00 / 20:00–08:00;
   outpatient clinic 07:45–13:30 / 15:00–19:00. These labels do not change the agreed
   hour credits listed below.
 - Click a cell to open the doctor picker. Search and select multiple names, then
@@ -276,9 +299,30 @@ and language settings.
 
 Import replaces the archive only after database validation and confirmation. A backup
 is saved in the `backups` subdirectory before replacement. Migration from the first
-version also creates a backup: assignments in the former **Operating room 3** and
-**Ward assistant** columns are removed. New ward assistants are managed within the
+version also creates a backup: assignments in the former **Ward assistant** column
+are removed, while **SURG 3** assignments are preserved. New ward assistants are managed within the
 ward cell. Importing old Excel files is not supported.
+
+### Monthly and holiday summaries
+
+**Multidisciplinary**, between Clinic and Night-off, is informational: zero credited
+hours, no summary counts and no paid assignments.
+
+The monthly summary opens on the month containing the displayed week’s Monday and allows other months to be selected.
+SURG 1/2/3 count assignments on every day; duty, on-call and clinic count weekdays only.
+Saturday/Sunday day/night count duty assignments only. Morning and afternoon clinic
+or on-call assignments count separately.
+
+The holiday summary opens on the year containing the displayed week’s Monday and supports other years. It counts
+one attendance per doctor per date, including paid work and hours after midnight represented by night-off, excluding leave
+and Multidisciplinary. Regular holidays: April 25, May 1, June 2, October 4, November 1,
+December 8 and 26. Special holidays: January 1 and 6, Easter Sunday and Monday,
+August 15 and December 25. Overlapping dates count only as special holidays.
+Monthly nights count on their starting date; holiday attendance also includes the following night-off date if it is a holiday. Information buttons show holiday lists and the dates and assignments behind each total. Reports include all recorded assignments in the
+period, including planned ones, and retain removed doctors.
+
+The update backs up the archive before upgrading it to schema version 3.
+Use v0.1.4 or later to reopen an upgraded archive.
 
 ### Hour calculations
 
@@ -305,7 +349,9 @@ is deducted. Totals below 38h are not flagged. Paid assignments, including post-
 rest following paid night duty, are always counted separately. Supervisors and trainees
 receive no hour credits and are excluded from availability checks.
 
-Monday night duty → Tuesday post-night rest → orange warning for Wednesday assignments.
+Monday night duty → Tuesday post-night rest: all Tuesday assignments are orange, including afternoon work. Monday night on-call → only Tuesday morning assignments are orange; afternoon work is allowed. The night-off cell itself and Wednesday have no such warning. Night on-call is informational: zero hours, excluded from counts, and does not generate night-off.
+Compensatory leave and night-off are mutually exclusive; the night preceding compensatory leave is also disabled.
+The annual summary includes paid clinics and paid nights: each clinic time band counts separately, each night counts once on its starting date, including weekends.
 Absence, vacation and compensatory leave prevent work assignments on the same day.
 Post-night rest is derived automatically, including across week boundaries, and is
 edited through the originating night duty. Manual post-night rest is available when
@@ -316,8 +362,7 @@ and minute details in a hidden internal sheet. Excel/LibreOffice recalculate for
 on opening. In numeric summaries, 6h20m = 6.333… hours, displayed with two decimals;
 calculations retain exact minutes.
 
-PDFs use the same HTML/CSS as the interface, with the schedule and summary on separate
-pages, preserving colours, labels and doctor boxes.
+Excel and PDF include Calendar, Weekly hours, Monthly shifts and Annual summary. PDFs use the same HTML/CSS as the interface, with each section on separate pages.
 
 ### Desktop packages
 
@@ -328,7 +373,7 @@ pages, preserving colours, labels and doctor boxes.
 Build on the target operating system: `dist/turniamo.exe` for Windows (no Python
 installation needed), `dist/turniamo.app` for macOS. Bundled WebEngine increases the
 package size. Local packages are not distribution-signed or notarized. The GitHub
-workflow builds and checks both packages. A tag such as `v0.1.3`, matching the version
+workflow builds and checks both packages. A tag such as `v0.1.4`, matching the version
 in `pyproject.toml`, publishes a Release only after both builds and all checks pass.
 The download buttons always point to the latest Release. Use **Actions → Test and
 package desktop app → Run workflow** for builds without publishing a Release;

@@ -23,6 +23,8 @@ from .i18n import TEXT, day_label, tr, week_label
 from .layout import COLUMNS, SUBLABELS, TIMES
 from .storage import Store
 from .presentation import presentation_data
+from .reports import period_reports
+from .domain import effective_assignments, rest_periods, rest_warning
 
 
 def default_export_path(filename):
@@ -40,7 +42,7 @@ def backup_before_migration(path: Path):
         return
     with closing(sqlite3.connect(path)) as source:
         version = source.execute("PRAGMA user_version").fetchone()[0]
-        if version < 2:
+        if version < 3:
             folder = path.parent / "backups"
             folder.mkdir(exist_ok=True)
             with closing(sqlite3.connect(folder / f"before-html-update-{datetime.now():%Y%m%d-%H%M%S}.sqlite3")) as target:
@@ -58,7 +60,7 @@ def import_database(store: Store, source_path: str):
                 if source.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
                     raise ValueError("integrity")
                 version = source.execute("PRAGMA user_version").fetchone()[0]
-                if version not in (1, 2):
+                if version not in (1, 2, 3):
                     raise ValueError("version")
                 if source.execute("SELECT count(*) FROM sqlite_master WHERE type IN ('trigger','view')").fetchone()[0]:
                     raise ValueError("unexpected schema")
@@ -69,7 +71,7 @@ def import_database(store: Store, source_path: str):
                 }.items():
                     if {r[1] for r in source.execute(f"PRAGMA table_info({table})")} != columns:
                         raise ValueError("schema")
-                if version == 2 and {r[1] for r in source.execute("PRAGMA table_info(week_doctors)")} != {"week_start", "doctor_id", "name"}:
+                if version >= 2 and {r[1] for r in source.execute("PRAGMA table_info(week_doctors)")} != {"week_start", "doctor_id", "name"}:
                     raise ValueError("roster")
                 with closing(sqlite3.connect(candidate)) as target:
                     source.backup(target)
@@ -86,8 +88,6 @@ def import_database(store: Store, source_path: str):
                 for a in incoming.raw_assignments():
                     if a.associate_role not in ("", "training", "reference"):
                         raise ValueError("role")
-                    if a.activity == Activity.SURGERY_3:
-                        raise ValueError("obsolete activity")
                     if a.doctor_id not in {d.id for d in incoming.week_doctors(monday(a.day))}:
                         raise ValueError("assignment without weekly membership")
                 for row in incoming.db.execute("SELECT week_start,doctor_id,name FROM week_doctors"):
@@ -118,6 +118,7 @@ class Bridge(QObject):
         except ValueError:
             saved = date.today()
         self.start = store.create_week(saved)
+        self.report_month = self.start.replace(day=1)
 
     def t(self, key, **kwargs):
         return tr(key, self.language, **kwargs)
@@ -125,6 +126,7 @@ class Bridge(QObject):
     def state(self):
         data = presentation_data(self.start, self.store.week_context(self.start), self.store.week_doctors(self.start), self.language)
         data["weeks"] = [{"start": s.isoformat(), "label": week_label(s)} for s in self.store.weeks()]
+        data["reports"] = period_reports(self.report_month, self.store.raw_assignments(), self.store.doctors())
         return data
 
     def publish(self):
@@ -165,8 +167,6 @@ class Bridge(QObject):
         return [a for a in self.store.week_context(self.start) if a.day == day and a.activity in activities]
 
     def chosen_activity(self, day, activity):
-        if activity == Activity.SURGERY_3:
-            raise ValueError("Removed activity")
         if activity == Activity.WARD and any(a.activity == Activity.WARD for a in self.slot_entries(day, activity)):
             return Activity.WARD_HELP
         return activity
@@ -175,6 +175,7 @@ class Bridge(QObject):
         existing = {a.doctor_id: a for a in self.slot_entries(day, activity)}
         raw = self.store.raw_assignments(day - timedelta(days=1), day + timedelta(days=1))
         result = []
+        periods = rest_periods(raw)
         for doctor in self.store.week_doctors(self.start):
             entry = existing.get(doctor.id)
             error = self.t("error_derived") if entry and entry.source_id else ""
@@ -183,8 +184,9 @@ class Bridge(QObject):
                     validate_assignment(Assignment(str(uuid4()), day, self.chosen_activity(day, activity), doctor.id), raw)
                 except RuleError as exc:
                     error = self.t(exc.key)
-            result.append({"id": doctor.id, "name": doctor.name, "selected": bool(entry),
-                           "assignment": entry.id if entry else None, "disabled": bool(error), "reason": error})
+            warning = rest_warning(day, doctor.id, activity, periods)
+            result.append({"warning": bool(warning), "id": doctor.id, "name": doctor.name, "selected": bool(entry),
+                           "assignment": entry.id if entry else None, "disabled": bool(error), "reason": error or (self.t(warning) if warning else "")})
         return result
 
     def dispatch(self, command, args):
@@ -193,6 +195,11 @@ class Bridge(QObject):
         if command == "week":
             self.start = self.store.create_week(date.fromisoformat(args["date"]))
             self.store.set_setting("last_week", self.start.isoformat())
+            self.report_month = self.start.replace(day=1)
+        elif command == "report_reset":
+            self.report_month = self.start.replace(day=1)
+        elif command == "report_period":
+            self.report_month = date(int(args["year"]), int(args["month"]), 1)
         elif command == "language":
             if args["language"] not in ("it", "en"):
                 raise ValueError("Invalid language")
@@ -268,10 +275,11 @@ class Bridge(QObject):
         if not path.lower().endswith("." + kind):
             path += "." + kind
         assignments, doctors = self.store.week_context(self.start), self.store.week_doctors(self.start)
+        reports = period_reports(self.report_month, self.store.raw_assignments(), self.store.doctors())
         if kind == "xlsx":
-            export_excel(path, self.start, assignments, doctors, self.language)
+            export_excel(path, self.start, assignments, doctors, self.language, reports=reports)
         else:
-            export_pdf(path, document_html(self.start, assignments, doctors, self.language))
+            export_pdf(path, document_html(self.start, assignments, doctors, self.language, reports=reports))
         return path
 
 

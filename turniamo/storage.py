@@ -38,7 +38,7 @@ class Store:
 
     def _migrate(self):
         version = self.db.execute("PRAGMA user_version").fetchone()[0]
-        if version > 2:
+        if version > 3:
             raise ValueError("Database created by a newer version of turniamo")
         if version < 2:
             # Removed legacy columns are discarded as requested. The app makes
@@ -48,12 +48,14 @@ class Store:
                     week_start TEXT NOT NULL REFERENCES weeks(start),
                     doctor_id TEXT NOT NULL REFERENCES doctors(id), name TEXT NOT NULL,
                     PRIMARY KEY(week_start,doctor_id))""")
-                self.db.execute("DELETE FROM assignments WHERE activity IN ('surgery_3','ward_help')")
+                self.db.execute("DELETE FROM assignments WHERE activity = 'ward_help'")
                 self.db.execute("""INSERT OR IGNORE INTO week_doctors
                     SELECT w.start,d.id,d.name FROM weeks w CROSS JOIN doctors d
                     WHERE d.active=1 OR EXISTS (SELECT 1 FROM assignments a
                     WHERE a.doctor_id=d.id AND a.day BETWEEN date(w.start,'-1 day') AND date(w.start,'+6 days'))""")
                 self.db.execute("PRAGMA user_version=2")
+        if version < 3:
+            self.db.execute("PRAGMA user_version=3")
 
     def close(self):
         self.db.close()
@@ -186,7 +188,7 @@ class Store:
 
     def set_slot_doctors(self, day: date, activity: Activity, doctor_ids: list[str]):
         """Validate and save a complete multi-selection in one transaction."""
-        if activity in (Activity.SURGERY_3, Activity.WARD_HELP):
+        if activity == Activity.WARD_HELP:
             raise RuleError("error_doctor")
         if len(doctor_ids) != len(set(doctor_ids)):
             raise RuleError("error_duplicate_assignment")

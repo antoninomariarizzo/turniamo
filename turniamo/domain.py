@@ -18,8 +18,10 @@ class Activity(StrEnum):
     NIGHT_DUTY = "night_duty"
     ON_CALL_AM = "on_call_am"
     ON_CALL_PM = "on_call_pm"
+    ON_CALL_NIGHT = "on_call_night"
     CLINIC_AM = "clinic_am"
     CLINIC_PM = "clinic_pm"
+    MULTIDISCIPLINARY = "multidisciplinary"
     NIGHT_OFF = "night_off"
     ABSENCE = "absence"
     HOLIDAY = "holiday"
@@ -29,7 +31,7 @@ class Activity(StrEnum):
 ACTIVITIES = tuple(Activity)
 SURGERIES = frozenset((Activity.SURGERY_URGENT, Activity.SURGERY_2, Activity.SURGERY_3))
 ABSENCES = frozenset((Activity.ABSENCE, Activity.HOLIDAY, Activity.RECOVERY))
-WORK = frozenset(ACTIVITIES) - ABSENCES - {Activity.NIGHT_OFF}
+WORK = frozenset(ACTIVITIES) - ABSENCES - {Activity.NIGHT_OFF, Activity.MULTIDISCIPLINARY, Activity.ON_CALL_NIGHT}
 
 
 class RuleError(ValueError):
@@ -79,6 +81,7 @@ class Issue:
     doctor_id: str
     day: date
     severity: str = "warning"
+    activity: Activity | None = None
 
 
 @dataclass(frozen=True)
@@ -170,7 +173,7 @@ def totals_for_week(start: date, assignments: list[Assignment], doctors: list[Do
 def validate_assignment(proposal: Assignment, raw: list[Assignment]) -> None:
     if proposal.activity == Activity.ON_CALL_AM and proposal.day.weekday() != 5:
         raise RuleError("error_saturday_only")
-    if proposal.paid and proposal.activity in ABSENCES:
+    if proposal.paid and proposal.activity in ABSENCES | {Activity.MULTIDISCIPLINARY, Activity.ON_CALL_NIGHT}:
         raise RuleError("error_paid_absence")
     if proposal.associate_role not in ("", "training", "reference"):
         raise RuleError("error_associate")
@@ -180,23 +183,48 @@ def validate_assignment(proposal: Assignment, raw: list[Assignment]) -> None:
     same = [a for a in others if a.day == proposal.day and a.doctor_id == proposal.doctor_id]
     if any(a.activity == proposal.activity for a in same):
         raise RuleError("error_duplicate_assignment")
+    if proposal.activity == Activity.RECOVERY and any(a.activity == Activity.NIGHT_OFF for a in same):
+        raise RuleError("error_recovery_night_off")
+    if proposal.activity == Activity.NIGHT_OFF and any(a.activity == Activity.RECOVERY for a in same):
+        raise RuleError("error_recovery_night_off")
+    if proposal.activity == Activity.NIGHT_DUTY and any(a.doctor_id == proposal.doctor_id and a.day == proposal.day + timedelta(days=1) and a.activity == Activity.RECOVERY for a in others):
+        raise RuleError("error_recovery_night_off")
     # Night-off counts a previous night's work. Leave on that calendar day does
     # not introduce a new work assignment and is therefore allowed.
     if proposal.activity in ABSENCES:
-        if any(a.activity in WORK or a.activity in ABSENCES for a in same):
+        if any(a.activity in WORK | {Activity.ON_CALL_NIGHT} or a.activity in ABSENCES for a in same):
             raise RuleError("error_unavailable")
-    elif proposal.activity in WORK and any(a.activity in ABSENCES for a in same):
+    elif proposal.activity in WORK | {Activity.ON_CALL_NIGHT} and any(a.activity in ABSENCES for a in same):
         raise RuleError("error_unavailable")
+
+
+MORNING_WORK = SURGERIES | {Activity.WARD, Activity.WARD_HELP, Activity.WEEK_SERVICE, Activity.DAY_DUTY, Activity.ON_CALL_AM, Activity.CLINIC_AM}
+
+
+def rest_periods(assignments):
+    full_days = {(a.day, a.doctor_id) for a in effective_assignments(assignments) if a.activity == Activity.NIGHT_OFF}
+    mornings = {(a.day + timedelta(days=1), a.doctor_id) for a in assignments if a.activity == Activity.ON_CALL_NIGHT}
+    return full_days, mornings
+
+
+def rest_warning(day, doctor_id, activity, periods):
+    full_days, mornings = periods
+    if (day, doctor_id) in full_days and activity not in ABSENCES | {Activity.NIGHT_OFF}:
+        return "warning_after_night_off"
+    if (day, doctor_id) in mornings and activity in MORNING_WORK:
+        return "warning_after_on_call_night"
+    return ""
 
 
 def issues_for_week(start: date, assignments: list[Assignment]) -> list[Issue]:
     issues: set[Issue] = set()
-    night_off = {(a.day, a.doctor_id) for a in assignments if a.activity == Activity.NIGHT_OFF}
+    periods = rest_periods(assignments)
     for a in assignments:
+        warning = rest_warning(a.day, a.doctor_id, a.activity, periods)
+        if start <= a.day <= start + timedelta(days=6) and warning:
+            issues.add(Issue(warning, a.doctor_id, a.day, activity=a.activity))
         if not start <= a.day <= start + timedelta(days=6) or a.activity not in WORK:
             continue
-        if (a.day - timedelta(days=1), a.doctor_id) in night_off:
-            issues.add(Issue("warning_after_night_off", a.doctor_id, a.day))
         same = [b for b in assignments if b.day == a.day and b.doctor_id == a.doctor_id]
         if any(b.activity in ABSENCES for b in same):
             issues.add(Issue("error_unavailable", a.doctor_id, a.day, "error"))
@@ -204,4 +232,4 @@ def issues_for_week(start: date, assignments: list[Assignment]) -> list[Issue]:
             issues.add(Issue("warning_multiple_surgeries", a.doctor_id, a.day))
         if a.activity == Activity.WARD and any(b.activity == Activity.WARD_HELP for b in same):
             issues.add(Issue("warning_own_help", a.doctor_id, a.day))
-    return sorted(issues, key=lambda i: (i.day, i.doctor_id, i.key))
+    return sorted(issues, key=lambda i: (i.day, i.doctor_id, i.key, i.activity or ""))

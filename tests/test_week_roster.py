@@ -81,7 +81,7 @@ def test_migration_backs_up_and_removes_only_requested_legacy_duties(tmp_path):
     legacy_database(path)
     backup_before_migration(path)
     store=Store(path)
-    assert [a.id for a in store.raw_assignments()]==['valid']
+    assert {a.id for a in store.raw_assignments()}=={'room','valid'}
     assert store.week_doctors(MONDAY)[0].name=='Alpha'
     backup=next((tmp_path/'backups').glob('*.sqlite3'))
     with sqlite3.connect(backup) as db:

@@ -1,6 +1,8 @@
 'use strict';
 const $ = s => document.querySelector(s);
 const icons = {
+  calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 2v6m10-6v6M3 11h18M7 15h2m3 0h2m3 0h1M7 18h2"/>',
+  doctors:'<circle cx="12" cy="7" r="4"/><path d="M4 22v-3a8 8 0 0 1 16 0v3M8 13v5a3 3 0 0 0 6 0v-4m3 1v3"/><circle cx="17" cy="20" r="2"/>',
   gear:'<path d="m9 3 .7-1h4.6l.7 1 .4 2 1.8 1 1.9-.7 1.5 2.6-1.4 1.6v2l1.4 1.6-1.5 2.6-1.9-.7-1.8 1-.4 2-.7 1H9l-.7-1-.4-2-1.8-1-1.9.7-1.5-2.6L4.1 12v-2L2.7 8.4l1.5-2.6 1.9.7 1.8-1z"/><circle cx="11.3" cy="10.5" r="3"/>',
   export:'<path d="M12 15V2m-4 4 4-4 4 4M7 9H4v12h16V9h-3"/>',
   left:'<path d="m14 6-6 6 6 6"/>', right:'<path d="m10 6 6 6-6 6"/>',
@@ -28,18 +30,20 @@ function addMenuAction(text,callback) { const b=el('button','menu-action',text);
 function render() {
   document.documentElement.lang=state.language;
   $('#tabs').replaceChildren();
-  for(const name of ['schedule','doctors','summary']) {
-    const b=el('button',name===tab?'selected':'',t(name)); b.dataset.tab=name;
-    b.onclick=()=>{tab=name;closeMenu();render();}; $('#tabs').append(b);
+  for(const name of ['schedule','summary','monthly','festivities']) {
+    const b=el('button',name===tab?'selected':'');if(name==='schedule')b.append(icon('calendar'));else b.textContent=t(name);b.title=t(name);b.setAttribute('aria-label',t(name));b.dataset.tab=name;
+    b.onclick=async()=>{closeMenu();if(['monthly','festivities'].includes(name)){try{await rpc('report_reset');}catch(_){return;}}tab=name;render();}; $('#tabs').append(b);
   }
   $('#weeks').replaceChildren(...state.weeks.map(w=>{const o=el('option','',w.label);o.value=w.start;return o;}));
   $('#weeks').value=state.start;
-  $('#new-week').textContent='+ '+t('new_week');
+  $('#doctors').title=t('doctors');$('#doctors').setAttribute('aria-label',t('doctors'));$('#doctors').classList.toggle('selected',tab==='doctors');
   for(const [id,key] of [['previous','previous_week'],['next','next_week'],['export','export'],['settings','settings']]) {
     $('#'+id).title=t(key); $('#'+id).setAttribute('aria-label',t(key));
   }
+  const reportTab=['monthly','festivities'].includes(tab);
+  $('.week-controls').hidden=reportTab;
   $('#main').replaceChildren();
-  if(tab==='schedule')renderSchedule(); else if(tab==='doctors')renderDoctors(); else renderSummary();
+  if(tab==='schedule')renderSchedule(); else if(tab==='doctors')renderDoctors(); else if(tab==='summary')renderSummary(); else renderPeriodReport();
 }
 function renderSchedule() {
   const table=el('table','schedule'); table.setAttribute('aria-label',t('schedule'));
@@ -68,7 +72,7 @@ function renderSchedule() {
         entries.sort((a,b)=>collator.compare(doctorName(a.doctor_id),doctorName(b.doctor_id))||a.doctor_id.localeCompare(b.doctor_id));
         for(const a of entries) {
           const d=state.doctors.find(d=>d.id===a.doctor_id); if(!d)continue;
-          const warning=state.issues.find(i=>i.day===a.day&&i.doctor_id===d.id);
+          const warning=state.issues.find(i=>i.day===a.day&&i.doctor_id===d.id&&(!i.activity||i.activity===a.activity));
           const chip=el('div','assignment'+(a.paid?' paid':'')+(warning?' warning':''));
           const name=el('span','name',d.name+(a.paid?' *':''));chip.append(name);
           let title=d.name+' · '+Math.floor(Math.abs(a.minutes)/60)+'h'+String(Math.abs(a.minutes)%60).padStart(2,'0')+'m';
@@ -112,7 +116,7 @@ async function doctorMenu(anchor,day,activity) {
   const populate=()=>{
     list.replaceChildren();
     for(const d of choices.filter(d=>d.name.toLocaleLowerCase().includes(search.value.toLocaleLowerCase()))) {
-      const b=el('button','choice');b.dataset.doctor=d.id;b.setAttribute('aria-pressed',String(selected.has(d.id)));b.disabled=d.disabled||saving;b.title=d.reason;
+      const b=el('button','choice'+(d.warning?' warning':''));b.dataset.doctor=d.id;b.setAttribute('aria-pressed',String(selected.has(d.id)));b.disabled=d.disabled||saving;b.title=d.reason;
       const mark=el('span','checkmark');if(selected.has(d.id))mark.append(icon('check'));b.append(mark,el('span','',d.name));
       b.onclick=()=>{
         if(selected.has(d.id))selected.delete(d.id);else selected.add(d.id);
@@ -179,6 +183,31 @@ function renderSummary() {
     const status=el('td');status.append(el('span',values.status==='above'?'status above':'neutral-status',t(values.status)));r.append(status);body.append(r);
   }table.append(body);$('#main').append(table);
 }
+function renderPeriodReport(kind=tab) {
+  const report=state.reports, monthly=kind==='monthly', page=el('section','period-report');
+  const controls=el('div','period-controls'),label=el('label','',t(monthly?'month':'year')),input=el('input');
+  input.type=monthly?'month':'number';input.value=monthly?report.month:report.year;
+  input.min=monthly?'1900-01':'1900';input.max=monthly?'9999-12':'9999';input.setAttribute('aria-label',label.textContent);
+  input.onchange=()=>{if(!input.value||!input.checkValidity())return;const [year,month]=monthly?input.value.split('-'):[input.value,report.month.split('-')[1]];run('report_period',{year:Number(year),month:Number(month)});};
+  label.append(input);controls.append(el('h2','',t(kind)),label);page.append(controls,el('p','report-note',t(monthly?'monthly_note':'festive_note')));
+  const columns=monthly?report.columns:['festive','special','paid_clinic','paid_nights'],rows=monthly?report.monthly:report.festivities;
+  const table=el('table','summary report-table'),head=el('thead'),hr=el('tr');hr.append(el('th','',t('report_person')));
+  for(const key of columns){const th=el('th','',t(key));if(!monthly)th.append(reportInfo(t(key),key,()=>holidayDialog(key)));hr.append(th);}head.append(hr);table.append(head);
+  const body=el('tbody');for(const row of rows){const tr=el('tr');tr.dataset.doctor=row.id;tr.append(el('th','',row.name));for(const key of columns){const td=el('td');td.append(el('span','amount',row.counts[key]));if(!monthly)td.append(reportInfo(row.name+' · '+t(key),key,()=>holidayDialog(key,row)));tr.append(td);}body.append(tr);}table.append(body);page.append(table);$('#main').append(page);
+}
+function reportInfo(label,key,callback) {
+  const button=el('button','info-button');button.append(icon('info'));button.title=label;
+  button.setAttribute('aria-label',t('calculation')+' · '+label);button.dataset.category=key;button.onclick=callback;return button;
+}
+function holidayDialog(key,row=null) {
+  const d=dialogBase((row?row.name+' · ':'')+t(key)+' · '+state.reports.year);d.classList.add('calculation-dialog');
+  const paid=key.startsWith('paid_');const entries=row?row.details[key]:(state.reports.holiday_catalog[key]||[]);if(paid)d.append(el('p','report-note',t(key+'_note')));
+  const table=el('table','breakdown'),head=el('thead'),header=el('tr');
+  for(const label of [t('date'),...(!paid?[t('festive')]:[]),...(row?[t('activity')]:[])])header.append(el('th','',label));head.append(header);table.append(head);
+  const body=el('tbody');for(const entry of entries){const tr=el('tr');const [year,month,day]=entry.date.split('-');tr.append(el('td','',day+'/'+month+'/'+year));if(!paid)tr.append(el('td','',t(entry.holiday)));if(row)tr.append(el('td','',entry.assignments.map(a=>t(a.activity)+(a.paid?' · '+t('paid'):'')).join('; ')));body.append(tr);}table.append(body);if(row||!paid)d.append(table);
+  if(row){if(!entries.length)d.append(el('p','',t('no_attendance')));const total=el('div','breakdown-total');total.append(el('span','',t('total')),el('strong','',row.counts[key]));d.append(total);if(!paid)d.append(el('p','report-note',t('attendance_note')));}
+  const footer=el('div','actions'),close=el('button','primary',t('close'));close.onclick=()=>d.close();footer.append(close);d.append(footer);d.showModal();
+}
 function formatMinutes(value){return (value<0?'−':'')+Math.floor(Math.abs(value)/60)+'h'+String(Math.abs(value)%60).padStart(2,'0')+'m';}
 function calculationDialog(doctor,category) {
   const d=dialogBase(doctor.name+' · '+t('calculation'));d.classList.add('calculation-dialog');
@@ -205,7 +234,7 @@ function assignmentDialog(a,doctor) {
   if(a.source_id){d.append(el('p','',t('error_derived')));const close=el('button','primary',t('close'));close.onclick=()=>d.close();d.append(close);d.showModal();return;}
   const paidRow=el('div','switch-row');paidRow.append(el('span','',t('paid')));
   const paid=el('button','switch');paid.setAttribute('role','switch');paid.setAttribute('aria-label',t('paid'));paid.setAttribute('aria-checked',String(a.paid));
-  paid.disabled=['absence','holiday','recovery'].includes(a.activity);
+  paid.disabled=['absence','holiday','recovery','multidisciplinary','on_call_night'].includes(a.activity);
   paid.onclick=()=>paid.setAttribute('aria-checked',String(paid.getAttribute('aria-checked')!=='true'));paidRow.append(paid);d.append(paidRow);
   const role=el('select');role.id='associate-role';for(const key of ['', 'training','reference']){const o=el('option','',t(key||'none'));o.value=key;role.append(o);}role.value=a.associate_role;
   const roleLabel=el('label','',t('associate'));roleLabel.htmlFor=role.id;d.append(roleLabel,role);
@@ -222,14 +251,11 @@ function settingsMenu(anchor) {
   addMenuAction(t('import_database'),()=>run('import_database'));showMenu(anchor);
 }
 function exportMenu(anchor) {closeMenu();$('#popover').replaceChildren();addMenuAction(t('export_excel'),()=>run('export',{kind:'xlsx'}));addMenuAction(t('export_pdf'),()=>run('export',{kind:'pdf'}));showMenu(anchor);}
-function newWeek() {
-  const d=dialogBase(t('new_week')),input=el('input');input.type='date';input.value=state.start;input.setAttribute('aria-label',t('date'));d.append(input);
-  actions(d,()=>{if(input.value){d.close();run('week',{date:input.value});}},t('new_week'));d.showModal();input.focus();
-}
 function offsetWeek(delta) {const d=new Date(state.start+'T12:00:00');d.setDate(d.getDate()+delta);run('week',{date:[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')});}
+$('#doctors').append(icon('doctors'));$('#doctors').onclick=()=>{tab='doctors';closeMenu();render();};
 $('#previous').append(icon('left'));$('#next').append(icon('right'));$('#export').append(icon('export'));$('#settings').append(icon('gear'));
 $('#previous').onclick=()=>offsetWeek(-7);$('#next').onclick=()=>offsetWeek(7);
-$('#weeks').onchange=e=>{closeMenu();run('week',{date:e.target.value});};$('#new-week').onclick=newWeek;
+$('#weeks').onchange=e=>{closeMenu();run('week',{date:e.target.value});};
 $('#settings').onclick=e=>settingsMenu(e.currentTarget);$('#export').onclick=e=>exportMenu(e.currentTarget);
 document.addEventListener('pointerdown',e=>{if(!$('#popover').hidden&&!$('#popover').contains(e.target)&&!e.target.closest('.slot,.tools'))closeMenu();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMenu();});
@@ -240,9 +266,9 @@ if(window.turniamoPrintState) {
   document.documentElement.lang=state.language;
   document.body.classList.add('print-document');
   const main=$('#main');main.replaceChildren();
-  for(const [name,draw] of [['schedule',renderSchedule],['summary',renderSummary]]) {
+  for(const [name,draw] of [['schedule',renderSchedule],['summary',renderSummary],['monthly',()=>renderPeriodReport('monthly')],['festivities',()=>renderPeriodReport('festivities')]]) {
     draw();const table=main.lastElementChild,section=el('section','print-section '+name+'-section');
-    section.append(el('h2','print-heading',(name==='schedule'?'turniamo':t('summary'))+' · '+state.weekLabel),table);main.append(section);
+    section.append(el('h2','print-heading',t(name)+' · '+(name==='monthly'?state.reports.month:name==='festivities'?state.reports.year:state.weekLabel)),table);main.append(section);
   }
   // Hidden export pages do not receive animation frames. Font readiness is
   // sufficient; printToPdf performs the final layout at the target page size.

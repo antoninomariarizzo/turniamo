@@ -56,12 +56,12 @@ def test_cross_week_night_updates_deletes_and_absorbs_manual():
     assert store.week_context(MONDAY) == []
 
 
-def test_saturday_night_warning_on_next_monday():
+def test_saturday_night_does_not_warn_on_monday():
     store = Store(":memory:")
     d = store.save_doctor("Alpha")
     store.save_assignment(Assignment("night", MONDAY - timedelta(days=2), A.NIGHT_DUTY, d))
     store.save_assignment(Assignment("work", MONDAY, A.CLINIC_AM, d))
-    assert issues_for_week(MONDAY, store.week_context(MONDAY))[0].day == MONDAY
+    assert issues_for_week(MONDAY, store.week_context(MONDAY)) == []
 
 
 def test_rejected_edit_keeps_original_and_does_not_duplicate_week():
