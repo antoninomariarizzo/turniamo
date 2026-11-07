@@ -121,6 +121,7 @@ dialog .actions { margin-top:24px; display:flex; justify-content:flex-end; gap:8
 .toolbar { flex-wrap:wrap; height:auto; min-height:62px; }
 nav { flex-wrap:wrap; }
 .choice.warning { background:var(--orange); color:#8b591b; }
+.choice:disabled { background:#f1f3f5; color:#858b93; opacity:1; }
 .period-report { padding:20px; }
 .period-controls { display:flex; align-items:center; justify-content:space-between; gap:16px; }
 .period-controls h2 { font-size:18px; }

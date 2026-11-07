@@ -2,13 +2,12 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
-from dataclasses import replace
 from pathlib import Path
 import sqlite3
 from uuid import uuid4
 
 from .domain import (Activity, Assignment, Doctor, RuleError, effective_assignments,
-                     monday, normalize_name, validate_assignment)
+                     monday, normalize_name, validate_assignment, SINGLE_DOCTOR_ACTIVITIES)
 
 
 class Store:
@@ -136,10 +135,6 @@ class Store:
             self.db.execute("UPDATE doctors SET active=0 WHERE id=?", (doctor_id,))
             self.db.execute("DELETE FROM assignments WHERE doctor_id=? AND day>=?", (doctor_id, start.isoformat()))
             self.db.execute("DELETE FROM week_doctors WHERE doctor_id=? AND week_start>=?", (doctor_id, start.isoformat()))
-            for row in self.db.execute("""SELECT day,min(id) FROM assignments WHERE activity='ward_help'
-                AND day>=? AND NOT EXISTS (SELECT 1 FROM assignments b WHERE b.day=assignments.day
-                AND b.activity='ward') GROUP BY day""", (start.isoformat(),)).fetchall():
-                self.db.execute("UPDATE assignments SET activity='ward' WHERE id=?", (row[1],))
 
     def raw_assignments(self, start: date | None = None, end: date | None = None) -> list[Assignment]:
         query, params = "SELECT * FROM assignments", []
@@ -188,8 +183,8 @@ class Store:
 
     def set_slot_doctors(self, day: date, activity: Activity, doctor_ids: list[str]):
         """Validate and save a complete multi-selection in one transaction."""
-        if activity == Activity.WARD_HELP:
-            raise RuleError("error_doctor")
+        if activity in SINGLE_DOCTOR_ACTIVITIES and len(doctor_ids) > 1:
+            raise RuleError("error_single_doctor")
         if len(doctor_ids) != len(set(doctor_ids)):
             raise RuleError("error_duplicate_assignment")
         with self.db:
@@ -198,25 +193,17 @@ class Store:
             if not set(doctor_ids) <= roster:
                 raise RuleError("error_doctor")
             raw = self.raw_assignments(day - timedelta(days=1), day + timedelta(days=1))
-            activities = (Activity.WARD, Activity.WARD_HELP) if activity == Activity.WARD else (activity,)
-            current = [a for a in effective_assignments(raw) if a.day == day and a.activity in activities]
+            current = [a for a in effective_assignments(raw) if a.day == day and a.activity == activity]
             if any(a.source_id and a.doctor_id not in doctor_ids for a in current):
                 raise RuleError("error_derived")
             removed = {a.id for a in current if a.doctor_id not in doctor_ids}
             working = [a for a in raw if a.id not in removed]
             retained = [a for a in current if a.doctor_id in doctor_ids]
             changes = []
-            if activity == Activity.WARD and retained and not any(a.activity == Activity.WARD for a in retained):
-                promoted = replace(retained[0], activity=Activity.WARD)
-                working = [promoted if a.id == promoted.id else a for a in working]
-                changes.append(promoted)
             for doctor_id in doctor_ids:
                 if any(a.doctor_id == doctor_id for a in retained):
                     continue
-                kind = activity
-                if activity == Activity.WARD and any(a.day == day and a.activity == Activity.WARD for a in working):
-                    kind = Activity.WARD_HELP
-                a = Assignment(str(uuid4()), day, kind, doctor_id)
+                a = Assignment(str(uuid4()), day, activity, doctor_id)
                 validate_assignment(a, working)
                 working.append(a)
                 changes.append(a)

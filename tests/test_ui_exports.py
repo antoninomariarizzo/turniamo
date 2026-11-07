@@ -8,7 +8,7 @@ from PySide6.QtCore import QEventLoop, QTimer, QSize
 from PySide6.QtPdf import QPdfDocument
 from PySide6.QtTest import QTest
 
-from turniamo.domain import Activity as A, Assignment
+from turniamo.domain import Activity as A, Assignment, RuleError
 from turniamo.exports import document_html, export_excel, export_pdf
 from turniamo.i18n import TEXT, day_label, tr
 from turniamo.storage import Store
@@ -49,6 +49,7 @@ def wait_js(window, expression):
 
 def test_html_direct_assignment_edit_remove_language_and_compact_layout(app, tmp_path):
     store, first, second = sample_store()
+    store.delete_assignment("surgery")
     window = MainWindow(store)
     window.show()
     wait_js(window, "window.turniamoReady === true")
@@ -87,6 +88,7 @@ def test_html_direct_assignment_edit_remove_language_and_compact_layout(app, tmp
 
 def test_multi_selection_cancel_filter_and_keyboard_confirmation(app):
     store, first, second = sample_store()
+    store.delete_assignment("surgery")
     window=MainWindow(store);window.show()
     wait_js(window,"window.turniamoReady === true")
     def open_menu():
@@ -122,11 +124,12 @@ def test_bridge_rejects_absence_and_handles_ward_in_one_cell(app):
     bridge = Bridge(store)
     day = (MONDAY + timedelta(days=1)).isoformat()
     bridge.dispatch("toggle", {"day":day,"activity":"ward","doctor":first})
-    bridge.dispatch("toggle", {"day":day,"activity":"ward","doctor":second})
+    with pytest.raises(RuleError, match="error_single_doctor"):
+        bridge.dispatch("toggle", {"day":day,"activity":"ward","doctor":second})
     entries = bridge.slot_entries(MONDAY+timedelta(days=1), A.WARD)
-    assert {a.activity for a in entries} == {A.WARD, A.WARD_HELP}
+    assert [a.activity for a in entries] == [A.WARD]
     bridge.dispatch("toggle", {"day":day,"activity":"ward","doctor":first})
-    assert bridge.slot_entries(MONDAY+timedelta(days=1), A.WARD)[0].activity == A.WARD
+    assert bridge.slot_entries(MONDAY+timedelta(days=1), A.WARD) == []
     store.save_assignment(Assignment("leave", MONDAY+timedelta(days=1), A.HOLIDAY, first))
     assert next(d for d in bridge.choices(MONDAY+timedelta(days=1), A.CLINIC_AM) if d['id']==first)['disabled']
     response = json.loads(bridge.request("toggle", json.dumps({"day":day,"activity":"clinic_am","doctor":first})))
@@ -284,18 +287,19 @@ def test_multidisciplinary_disabled_in_picker_and_rejected_by_storage(app,absenc
     store.close()
 
 
-def test_morning_overlap_picker_calendar_and_excel(app):
+def test_historical_overlap_picker_calendar_and_excel(app):
     from turniamo.exports import export_cells
     from turniamo.layout import COLUMNS
     store=Store(':memory:');doctor=store.save_doctor('Demo');store.create_week(MONDAY)
     store.set_setting('last_week',MONDAY.isoformat())
     store.save_assignment(Assignment('surgery',MONDAY,A.SURGERY_2,doctor))
     bridge=Bridge(store);bridge.start=MONDAY
-    for activity in (A.SURGERY_URGENT,A.SURGERY_3,A.WEEK_SERVICE,A.DAY_DUTY,A.CLINIC_AM):
-        assert bridge.choices(MONDAY,activity)[0]['warning']
+    for activity in (A.SURGERY_URGENT,A.SURGERY_3,A.WARD,A.WEEK_SERVICE,A.DAY_DUTY,A.CLINIC_AM):
+        assert bridge.choices(MONDAY,activity)[0]['disabled']
     assert not bridge.choices(MONDAY,A.CLINIC_PM)[0]['warning']
-    for activity in (A.CLINIC_AM,A.CLINIC_PM):
-        store.save_assignment(Assignment(activity,MONDAY,activity,doctor))
+    store.save_assignment(Assignment('pm',MONDAY,A.CLINIC_PM,doctor))
+    with store.db:
+        store.db.execute("INSERT INTO assignments VALUES(?,?,?,?,?,?,?)", ('legacy',MONDAY.isoformat(),A.CLINIC_AM.value,doctor,0,'',''))
     window=MainWindow(store);window.show();wait_js(window,'window.turniamoReady===true')
     assert js(window,"document.querySelectorAll('.assignment.warning').length")==2
     assert not js(window,"document.querySelector('[data-activity=clinic_pm] .assignment').classList.contains('warning')")
@@ -304,3 +308,109 @@ def test_morning_overlap_picker_calendar_and_excel(app):
     warnings={(row,column):warning for row,column,_,_,warning in cells}
     assert warnings[(0,col)] and not warnings[(3,col)]
     window.close();store.close()
+
+
+@pytest.mark.parametrize('activity', [A.WARD, A.WEEK_SERVICE])
+def test_single_doctor_picker_replaces_only_on_confirmation(app, activity):
+    store, first, second = sample_store()
+    store.delete_assignment("surgery")
+    store.delete_assignment("clinic")
+    window=MainWindow(store);window.show()
+    wait_js(window,'window.turniamoReady===true')
+    selector=f'[data-day="{MONDAY}"][data-activity="{activity}"]'
+    js(window,f"document.querySelector('{selector}').click()")
+    wait_js(window,"!document.querySelector('#popover').hidden && document.querySelectorAll('.choice').length===2")
+    for doctor in (first,second):
+        js(window,f"document.querySelector('.choice[data-doctor=\"{doctor}\"]').click()")
+    assert js(window,"document.querySelectorAll('.choice[aria-pressed=true]').length")==1
+    assert not any(a.activity==activity for a in store.raw_assignments())
+    js(window,"document.activeElement.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}))")
+    wait_js(window,"document.querySelector('#popover').hidden")
+    assert [a.doctor_id for a in store.raw_assignments() if a.activity==activity]==[second]
+    js(window,f"document.querySelector('{selector}').click()")
+    wait_js(window,"!document.querySelector('#popover').hidden")
+    js(window,f"document.querySelector('.choice[data-doctor=\"{first}\"]').click()")
+    js(window,"document.querySelector('.selection-cancel').click()")
+    assert [a.doctor_id for a in store.raw_assignments() if a.activity==activity]==[second]
+    window.close();store.close()
+
+
+@pytest.mark.parametrize('first,second', [
+    (a,b) for group in ((A.SURGERY_URGENT,A.SURGERY_2,A.SURGERY_3),(A.DAY_DUTY,A.NIGHT_DUTY))
+    for a in group for b in group if a!=b
+])
+def test_picker_disables_incompatible_doctors(app,first,second):
+    store=Store(':memory:');doctor=store.save_doctor('Demo')
+    store.create_week(MONDAY);store.set_setting('last_week',MONDAY.isoformat())
+    store.save_assignment(Assignment('existing',MONDAY,first,doctor))
+    bridge=Bridge(store)
+    choice=bridge.choices(MONDAY,second)[0]
+    assert choice['id']==doctor and choice['disabled']
+    assert choice['reason'] and not choice['warning']
+    window=MainWindow(store);window.show()
+    wait_js(window,'window.turniamoReady===true')
+    js(window,f"document.querySelector('[data-activity={second}]').click()")
+    wait_js(window,"!document.querySelector('#popover').hidden && document.querySelectorAll('.choice').length===1")
+    assert js(window,"document.querySelector('.choice').disabled")
+    assert js(window,"getComputedStyle(document.querySelector('.choice')).color")=="rgb(133, 139, 147)"
+    js(window,"document.querySelector('.choice').click()")
+    assert js(window,"document.querySelector('.choice').getAttribute('aria-pressed')")=="false"
+    window.close()
+    assert bridge.choices(MONDAY,first)[0]['selected']
+    store.delete_assignment('existing')
+    assert bridge.choices(MONDAY,second)[0]['id']==doctor
+    assert not bridge.choices(MONDAY,second)[0]['disabled']
+    store.close()
+
+
+@pytest.mark.parametrize('with_service,expected', [(False,540),(True,480)])
+def test_ward_hours_shared_by_ui_pdf_and_excel(app,tmp_path,with_service,expected):
+    from turniamo.presentation import presentation_data
+    store=Store(':memory:')
+    first,second=store.save_doctor('Alpha'),store.save_doctor('Beta')
+    store.create_week(MONDAY)
+    store.save_assignment(Assignment('ward',MONDAY,A.WARD,first))
+    if with_service:
+        store.save_assignment(Assignment('service',MONDAY,A.WEEK_SERVICE,second))
+    context,doctors=store.week_context(MONDAY),store.week_doctors(MONDAY)
+    data=presentation_data(MONDAY,context,doctors,'it')
+    assert next(a['minutes'] for a in data['assignments'] if a['id']=='ward')==expected
+    assert data['totals'][first]['ordinary']==('8h00m' if with_service else '9h00m')
+    html=document_html(MONDAY,context,doctors,'it')
+    assert f'"minutes": {expected}' in html
+    path=tmp_path/'ward.xlsx'
+    export_excel(path,MONDAY,context,doctors,'it')
+    workbook=load_workbook(path)
+    detail=next(sheet for sheet in workbook if sheet.sheet_state=='hidden')
+    rows={row[7]:row[6] for row in detail.iter_rows(min_row=2,values_only=True)}
+    assert rows[first]==expected
+    if with_service:
+        assert rows[second]==390
+    workbook.close();store.close()
+
+
+@pytest.mark.parametrize('band', [
+    (A.SURGERY_URGENT,A.SURGERY_2,A.SURGERY_3,A.WARD,A.WEEK_SERVICE,A.DAY_DUTY,A.ON_CALL_AM,A.CLINIC_AM),
+    (A.WARD,A.DAY_DUTY,A.ON_CALL_PM,A.CLINIC_PM),
+    (A.NIGHT_DUTY,A.ON_CALL_NIGHT),
+])
+def test_all_overlapping_pairs_disabled_and_bulk_replacement_atomic(app,band):
+    from itertools import permutations
+    day=MONDAY+timedelta(days=5)
+    for first,second in permutations(band,2):
+        store=Store(':memory:')
+        a,b=store.save_doctor('Alpha'),store.save_doctor('Beta')
+        store.create_week(MONDAY);store.set_setting('last_week',MONDAY.isoformat())
+        store.set_slot_doctors(day,first,[a])
+        store.set_slot_doctors(day,second,[b])
+        choice=next(c for c in Bridge(store).choices(day,second) if c['id']==a)
+        assert choice['disabled'] and not choice['warning'] and choice['reason']
+        before=store.raw_assignments()
+        with pytest.raises(RuleError,match='error_time_conflict'):
+            store.set_slot_doctors(day,second,[a])
+        assert store.raw_assignments()==before
+        store.set_slot_doctors(day,first,[])
+        assert not next(c for c in Bridge(store).choices(day,second) if c['id']==a)['disabled']
+        store.set_slot_doctors(day,second,[a])
+        assert [x.doctor_id for x in store.raw_assignments()]==[a]
+        store.close()

@@ -58,7 +58,7 @@ function renderSchedule() {
     const row=el('tr',day.weekday>=5?'weekend':'');row.append(el('th','',day.label));
     for(const col of state.columns) {
       const td=el('td'), cell=el('div','cell');
-      const activities=col.key==='ward'?['ward']:col.activities;
+      const activities=col.activities;
       for(const activity of activities) {
         const slot=el('div','slot');slot.tabIndex=0;slot.setAttribute('role','button');
         slot.dataset.day=day.date;slot.dataset.activity=activity;
@@ -66,7 +66,7 @@ function renderSchedule() {
         if(state.sublabels[activity])slot.append(el('span','slot-label',state.sublabels[activity]));
         const disabled=activity==='on_call_am'&&day.weekday!==5;
         if(disabled){slot.setAttribute('aria-disabled','true');slot.tabIndex=-1;}
-        const entries=state.assignments.filter(a=>a.day===day.date&&(a.activity===activity||(activity==='ward'&&a.activity==='ward_help')));
+        const entries=state.assignments.filter(a=>a.day===day.date&&a.activity===activity);
         const collator=new Intl.Collator(state.language,{sensitivity:'base',numeric:true});
         const doctorName=id=>state.doctors.find(d=>d.id===id)?.name.normalize('NFKC')||'';
         entries.sort((a,b)=>collator.compare(doctorName(a.doctor_id),doctorName(b.doctor_id))||a.doctor_id.localeCompare(b.doctor_id));
@@ -79,7 +79,6 @@ function renderSchedule() {
           if(warning)title+=' · '+t(warning.key);
           if(!d.active)title+=' · '+t('former_doctor');
           chip.title=title;
-          if(a.activity==='ward_help')chip.append(el('span','associated',t('ward_assistant')));
           if(a.associate_role)chip.append(el('span','associated',t(a.associate_role)+': '+a.associate_name));
           const details=el('button','more');details.append(icon('more'));details.title=t('assignment_note');
           details.setAttribute('aria-label',t('assignment_note')+' '+d.name);
@@ -119,8 +118,12 @@ async function doctorMenu(anchor,day,activity) {
       const b=el('button','choice'+(d.warning?' warning':''));b.dataset.doctor=d.id;b.setAttribute('aria-pressed',String(selected.has(d.id)));b.disabled=d.disabled||saving;b.title=d.reason;
       const mark=el('span','checkmark');if(selected.has(d.id))mark.append(icon('check'));b.append(mark,el('span','',d.name));
       b.onclick=()=>{
-        if(selected.has(d.id))selected.delete(d.id);else selected.add(d.id);
-        b.setAttribute('aria-pressed',String(selected.has(d.id)));mark.replaceChildren();if(selected.has(d.id))mark.append(icon('check'));
+        if(selected.has(d.id))selected.delete(d.id);else {if(state.singleDoctorActivities.includes(activity))selected.clear();selected.add(d.id);}
+        for(const choice of list.querySelectorAll('.choice')) {
+          const checked=selected.has(choice.dataset.doctor);
+          choice.setAttribute('aria-pressed',String(checked));
+          const checkmark=choice.querySelector('.checkmark');checkmark.replaceChildren();if(checked)checkmark.append(icon('check'));
+        }
       };list.append(b);
     }
     if(!list.children.length)list.append(el('div','empty',t('no_results')));

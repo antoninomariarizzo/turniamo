@@ -12,7 +12,6 @@ class Activity(StrEnum):
     SURGERY_2 = "surgery_2"
     SURGERY_3 = "surgery_3"
     WARD = "ward"
-    WARD_HELP = "ward_help"
     WEEK_SERVICE = "week_service"
     DAY_DUTY = "day_duty"
     NIGHT_DUTY = "night_duty"
@@ -30,6 +29,7 @@ class Activity(StrEnum):
 
 ACTIVITIES = tuple(Activity)
 SURGERIES = frozenset((Activity.SURGERY_URGENT, Activity.SURGERY_2, Activity.SURGERY_3))
+SINGLE_DOCTOR_ACTIVITIES = frozenset((Activity.WARD, Activity.WEEK_SERVICE))
 ABSENCES = frozenset((Activity.ABSENCE, Activity.HOLIDAY, Activity.RECOVERY))
 WORK = frozenset(ACTIVITIES) - ABSENCES - {Activity.NIGHT_OFF, Activity.MULTIDISCIPLINARY, Activity.ON_CALL_NIGHT}
 
@@ -140,10 +140,9 @@ def minutes_for(a: Assignment, assignments: list[Assignment]) -> int:
     if a.activity in SURGERIES:
         return 420
     if a.activity == Activity.WARD:
-        # Weekly service is an independent activity, not automatically ward help.
-        has_help = any(x.activity == Activity.WARD_HELP and x.doctor_id != a.doctor_id for x in same_day)
+        has_help = any(x.activity == Activity.WEEK_SERVICE for x in same_day)
         return 480 if has_help else 540
-    if a.activity in (Activity.WARD_HELP, Activity.WEEK_SERVICE, Activity.NIGHT_DUTY,
+    if a.activity in (Activity.WEEK_SERVICE, Activity.NIGHT_DUTY,
                        Activity.NIGHT_OFF, Activity.ON_CALL_AM):
         return 390
     if a.activity == Activity.DAY_DUTY:
@@ -183,9 +182,15 @@ def validate_assignment(proposal: Assignment, raw: list[Assignment]) -> None:
     if bool(proposal.associate_role) != bool(proposal.associate_name.strip()):
         raise RuleError("error_associate")
     others = [a for a in effective_assignments(raw) if a.id != proposal.id]
+    if proposal.activity in SINGLE_DOCTOR_ACTIVITIES and any(
+        a.day == proposal.day and a.activity == proposal.activity for a in others
+    ):
+        raise RuleError("error_single_doctor")
     same = [a for a in others if a.day == proposal.day and a.doctor_id == proposal.doctor_id]
     if any(a.activity == proposal.activity for a in same):
         raise RuleError("error_duplicate_assignment")
+    if any(activities_conflict(proposal.activity, a.activity) for a in same):
+        raise RuleError("error_time_conflict")
     if proposal.activity == Activity.RECOVERY and any(a.activity == Activity.NIGHT_OFF for a in same):
         raise RuleError("error_recovery_night_off")
     if proposal.activity == Activity.NIGHT_OFF and any(a.activity == Activity.RECOVERY for a in same):
@@ -201,14 +206,21 @@ def validate_assignment(proposal: Assignment, raw: list[Assignment]) -> None:
         raise RuleError("error_unavailable")
 
 
-MORNING_WORK = SURGERIES | {Activity.WARD, Activity.WARD_HELP, Activity.WEEK_SERVICE, Activity.DAY_DUTY, Activity.ON_CALL_AM, Activity.CLINIC_AM}
+MORNING_WORK = SURGERIES | {Activity.WARD, Activity.WEEK_SERVICE, Activity.DAY_DUTY, Activity.ON_CALL_AM, Activity.CLINIC_AM}
 
 
-def morning_conflict(day, doctor_id, activity, assignments):
-    return activity in MORNING_WORK and any(
-        a.day == day and a.doctor_id == doctor_id and a.activity in MORNING_WORK
-        and a.activity != activity for a in assignments
-    )
+# Scheduling bands are explicit product rules, not parsed display labels.
+# In particular surgery + a PM clinic/on-call remains a valid combination.
+AFTERNOON_WORK = frozenset((Activity.WARD, Activity.DAY_DUTY, Activity.ON_CALL_PM, Activity.CLINIC_PM))
+NIGHT_WORK = frozenset((Activity.NIGHT_DUTY, Activity.ON_CALL_NIGHT))
+
+
+def activities_conflict(first: Activity, second: Activity) -> bool:
+    if first == second:
+        return False  # Duplicate assignments have a dedicated validation error.
+    return any(first in band and second in band for band in (MORNING_WORK, AFTERNOON_WORK, NIGHT_WORK)) or {
+        first, second
+    } == {Activity.DAY_DUTY, Activity.NIGHT_DUTY}
 
 
 def rest_periods(assignments):
@@ -238,8 +250,10 @@ def issues_for_week(start: date, assignments: list[Assignment]) -> list[Issue]:
         same = [b for b in assignments if b.day == a.day and b.doctor_id == a.doctor_id]
         if any(b.activity in ABSENCES for b in same):
             issues.add(Issue("error_unavailable", a.doctor_id, a.day, "error", activity=a.activity))
-        if morning_conflict(a.day, a.doctor_id, a.activity, same):
-            issues.add(Issue("warning_morning_overlap", a.doctor_id, a.day, activity=a.activity))
-        if a.activity == Activity.WARD and any(b.activity == Activity.WARD_HELP for b in same):
-            issues.add(Issue("warning_own_help", a.doctor_id, a.day))
+        if any(activities_conflict(a.activity, b.activity) for b in same):
+            issues.add(Issue("error_time_conflict", a.doctor_id, a.day, "error", activity=a.activity))
+        if a.activity in SINGLE_DOCTOR_ACTIVITIES and any(
+            b.day == a.day and b.activity == a.activity and b.id != a.id for b in assignments
+        ):
+            issues.add(Issue("error_single_doctor", a.doctor_id, a.day, "error", activity=a.activity))
     return sorted(issues, key=lambda i: (i.day, i.doctor_id, i.key, i.activity or ""))

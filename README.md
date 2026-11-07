@@ -103,8 +103,8 @@ non sostituisce una firma del produttore.
    salva le scelte; **Annulla / Esc** o un clic fuori dal menu le scarta.
    I medici indisponibili sono disabilitati e grigi; gli avvisi sono arancioni.
 3. Usa il pulsante **…** accanto a un incarico per indicare pagamento, persona in
-   formazione o referente. In **Reparto**, il primo medico è responsabile e i
-   successivi sono aiuti; rimuovendo il responsabile, un aiuto ne assume il ruolo.
+   formazione o referente. **Reparto** e **ACC-W.S.** consentono un solo medico per cella;
+   selezionando un altro medico si sostituisce quello presente alla conferma.
 4. Consulta **Ore settimanali**, **Turni mensili** e **Riepilogo annuale** per controllare
    ore e turni. I pulsanti **i** spiegano i totali e gli incarichi che li compongono.
 5. Usa l’icona **Esporta** per creare Excel o PDF.
@@ -149,7 +149,7 @@ per ripristinare l’archivio**.
 
 Sono importabili gli schemi database 1, 2 e 3; quelli futuri sono rifiutati.
 La migrazione dallo schema 1 conserva CHIR 3 ma elimina gli incarichi della vecchia
-colonna separata Aiuto reparto; gli aiuti attuali si gestiscono dentro Reparto.
+colonna separata Aiuto reparto. L’opzione Aiuto reparto è stata rimossa.
 L’archivio aggiornato allo schema 3 richiede turniamo v0.1.4 o successiva;
 la versione dello schema è distinta da quella dell’app.
 
@@ -187,9 +187,16 @@ backup, esportazioni o dati reali dei medici.
 #### Disponibilità e sovrapposizioni
 
 - Lo stesso medico non può ricevere due volte la stessa attività nello stesso giorno.
-- Gli incarichi mattutini contemporanei dello stesso medico sono segnalati in
-  arancione. Questo avviso riguarda le attività coinvolte, senza estendersi
-  agli incarichi pomeridiani. Multidisciplinare non partecipa a questo controllo.
+- Ogni medico può svolgere **un solo incarico per fascia oraria**. Al mattino
+  sono incompatibili fra loro CHIR 1/2/3, Reparto, ACC-W.S., Guardia diurna,
+  Ambulatorio AM e Reperibilità AM. Al pomeriggio sono incompatibili fra loro
+  Reparto, Guardia diurna, Ambulatorio PM e Reperibilità PM. Di notte sono
+  incompatibili Guardia notturna e Reperibilità notturna. Guardia diurna e notturna
+  restano incompatibili nella stessa data.
+- Il medico già impegnato resta visibile nel selettore, **grigio e non selezionabile**,
+  con il motivo del blocco. Il controllo vale anche al salvataggio, in entrambi
+  gli ordini di inserimento. Sala al mattino + Ambulatorio/Reperibilità PM restano
+  consentiti. Multidisciplinare resta escluso dal controllo delle sovrapposizioni.
 - Gli avvisi arancioni permettono di salvare; le incompatibilità di disponibilità
   impediscono l’inserimento. Eventuali incompatibilità già presenti nell’archivio
   sono segnalate senza cancellare automaticamente gli incarichi.
@@ -220,8 +227,9 @@ backup, esportazioni o dati reali dei medici.
 
 #### Ore, pagamento e annotazioni
 
-- In **Reparto**, il responsabile riceve 9h se solo, oppure 8h in presenza di aiuti;
-  ciascun aiuto riceve 6h30m. ACC-W.S. è un’attività indipendente dagli aiuti di Reparto.
+- **Reparto** e **ACC-W.S.** accettano al massimo un medico per cella. Il medico
+  di Reparto riceve 8h se nello stesso giorno è assegnato un medico ad ACC-W.S.,
+  altrimenti 9h. Il medico di ACC-W.S. riceve 6h30m. Non è prevista l’opzione Aiuto reparto.
 - Le **ore ordinarie** mostrate comprendono Ferie e Recupero. L’avviso oltre 40h
   considera lavoro ordinario e Ferie prima di sottrarre i recuperi. L’interfaccia
   non segnala i totali inferiori a 38h.
@@ -274,8 +282,7 @@ esatti anche quando i totali in ore sono visualizzati con due decimali.
 | Attività | Ore per medico |
 | --- | --- |
 | CHIR 1 / CHIR 2 / CHIR 3 | 7h |
-| Reparto, responsabile | 9h solo; 8h con aiuto |
-| Reparto, ciascun aiuto | 6h30m |
+| Reparto | 9h senza ACC-W.S.; 8h con ACC-W.S. nello stesso giorno |
 | ACC-W.S. | 6h30m |
 | Guardia diurna | 13h |
 | Guardia notturna | 6h30m nella data di inizio |
@@ -473,8 +480,8 @@ a publisher signature.
    **Cancel / Esc** or clicking outside the picker discards them. Unavailable doctors
    are disabled and grey; warnings are orange.
 3. Use **…** beside an assignment to set **Paid separately**, **In training** or **Contact**.
-   In **Ward**, the first doctor is the lead and the others are assistants;
-   removing the lead automatically promotes an assistant.
+   **Ward** and **ACC-W.S.** allow one doctor per slot; selecting another doctor
+   replaces the current doctor when confirmed.
 4. Open **Weekly hours**, **Monthly shifts** and **Annual summary** to review
    hours and shifts. The **i** buttons explain totals and their contributing assignments.
 5. Use **Export** to create Excel or PDF files. The **Settings** gear contains
@@ -519,7 +526,7 @@ imported to restore the archive**.
 
 Database schemas 1, 2 and 3 can be imported; future schemas are rejected.
 Migration from schema 1 preserves SURG 3 but removes assignments from the old separate
-Ward help column; current assistants are managed within Ward.
+Ward help column. The Ward help option has been removed.
 An archive upgraded to schema 3 requires turniamo v0.1.4 or later;
 the schema version is separate from the application version.
 
@@ -557,9 +564,15 @@ exports or real doctor data.
 #### Availability and overlaps
 
 - A doctor cannot receive the same activity twice on the same day.
-- Concurrent morning assignments for the same doctor are highlighted in orange.
-  This warning applies to the activities involved, without extending to afternoon
-  assignments. Multidisciplinary assignments are excluded from this check.
+- Each doctor may perform **only one duty per time band**. In the morning,
+  SURG 1/2/3, Ward, ACC-W.S., Day duty, AM clinic and AM on-call are mutually
+  exclusive. In the afternoon, Ward, Day duty, PM clinic and PM on-call are
+  mutually exclusive. At night, Night duty and Night on-call are mutually exclusive.
+  Day and night duty remain incompatible on the same date.
+- Doctors already assigned remain visible in the picker, **grey and disabled**,
+  with the reason for the conflict. Saving enforces the same rule in either
+  insertion order. Morning surgery + PM clinic/on-call remain allowed.
+  Multidisciplinary assignments remain excluded from overlap checks.
 - Orange warnings allow saving; availability conflicts prevent insertion.
   Existing conflicts in the archive are flagged without automatically deleting assignments.
 - **Absence, Annual leave and Time off in lieu** prevent other assignments on the
@@ -590,8 +603,9 @@ exports or real doctor data.
 
 #### Hours, payment and annotations
 
-- In **Ward**, the lead doctor receives 9h when alone or 8h with assistants;
-  each assistant receives 6h30m. ACC-W.S. is independent of ward assistance.
+- **Ward** and **ACC-W.S.** each allow at most one doctor per slot. The Ward doctor
+  receives 8h when a doctor is assigned to ACC-W.S. on the same day, otherwise 9h.
+  The ACC-W.S. doctor receives 6h30m. The Ward help option is no longer available.
 - Displayed **ordinary hours** include Annual leave and Time off in lieu. The warning
   above 40h considers ordinary work and Annual leave before subtracting time off
   in lieu. The interface does not flag totals below 38h.
@@ -645,8 +659,7 @@ exact minutes even when hour totals are displayed with two decimal places.
 | Activity | Hours per doctor |
 | --- | --- |
 | SURG 1 / SURG 2 / SURG 3 | 7h |
-| Ward, lead | 9h alone; 8h with assistance |
-| Ward, each assistant | 6h30m |
+| Ward | 9h without ACC-W.S.; 8h with ACC-W.S. on the same day |
 | ACC-W.S. | 6h30m |
 | Day duty | 13h |
 | Night duty | 6h30m on the starting date |

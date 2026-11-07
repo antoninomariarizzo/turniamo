@@ -96,7 +96,9 @@ def test_night_warning_in_picker_and_excel(app):
     for offset,activity in [(1,A.CLINIC_AM),(1,A.CLINIC_PM),(2,A.CLINIC_AM)]:
         store.save_assignment(Assignment(str(offset)+activity,monday+timedelta(days=offset),activity,doctor))
     bridge=Bridge(store);bridge.start=monday
-    assert bridge.choices(monday+timedelta(days=1),A.SURGERY_3)[0]['warning']
+    assert bridge.choices(monday+timedelta(days=1),A.SURGERY_3)[0]['disabled']
+    assert not bridge.choices(monday+timedelta(days=1),A.SURGERY_3)[0]['warning']
+    assert bridge.choices(monday+timedelta(days=1),A.NIGHT_DUTY)[0]['warning']
     assert bridge.choices(monday+timedelta(days=1),A.CLINIC_PM)[0]['warning']
     assert not bridge.choices(monday+timedelta(days=2),A.CLINIC_AM)[0]['warning']
     col=next(i for i,(key,_) in enumerate(COLUMNS,1) if key=='clinic_group')

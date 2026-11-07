@@ -1,7 +1,7 @@
 """One presentation model for the live HTML interface and its PDF export."""
 from dataclasses import asdict
 from datetime import timedelta
-from .domain import duration, issues_for_week, minutes_for, totals_for_week
+from .domain import SINGLE_DOCTOR_ACTIVITIES, duration, issues_for_week, minutes_for, totals_for_week
 from .i18n import TEXT, day_label, tr, week_label
 from .layout import COLUMNS, TIMES
 
@@ -13,6 +13,7 @@ def presentation_data(start, context, doctors, language):
         "start": start.isoformat(), "weekLabel": week_label(start), "language": language,
         "days": [{"date": (start + timedelta(days=n)).isoformat(), "label": day_label(start + timedelta(days=n), language), "weekday": n} for n in range(7)],
         "columns": [{"key": key, "activities": [a.value for a in activities]} for key, activities in COLUMNS],
+        "singleDoctorActivities": [a.value for a in sorted(SINGLE_DOCTOR_ACTIVITIES)],
         "sublabels": {a.value: value for a, value in TIMES.items()},
         "doctors": [asdict(d) for d in doctors],
         "assignments": [{**asdict(a), "day": a.day.isoformat(), "minutes": minutes_for(a, context)} for a in assignments],

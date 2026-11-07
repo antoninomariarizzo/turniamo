@@ -6,7 +6,7 @@ COLUMNS = (
     ("surgery_urgent", (A.SURGERY_URGENT,)),
     ("surgery_2", (A.SURGERY_2,)),
     ("surgery_3", (A.SURGERY_3,)),
-    ("ward", (A.WARD, A.WARD_HELP)),
+    ("ward", (A.WARD,)),
     ("week_service", (A.WEEK_SERVICE,)),
     ("duty_group", (A.DAY_DUTY, A.NIGHT_DUTY)),
     ("on_call_group", (A.ON_CALL_AM, A.ON_CALL_PM, A.ON_CALL_NIGHT)),

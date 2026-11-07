@@ -17,7 +17,7 @@ def entry(activity, day=MONDAY, doctor="a", paid=False, **kwargs):
 
 @pytest.mark.parametrize("activity,expected", [
     (A.SURGERY_URGENT, 420), (A.SURGERY_2, 420), (A.SURGERY_3, 420),
-    (A.WARD, 540), (A.WARD_HELP, 390), (A.WEEK_SERVICE, 390),
+    (A.WARD, 540), (A.WEEK_SERVICE, 390),
     (A.DAY_DUTY, 780), (A.NIGHT_DUTY, 390), (A.NIGHT_OFF, 390),
     (A.ON_CALL_AM, 390), (A.ON_CALL_PM, 240), (A.CLINIC_AM, 360),
     (A.CLINIC_PM, 270), (A.ABSENCE, 0), (A.HOLIDAY, 380), (A.RECOVERY, -380),
@@ -40,12 +40,25 @@ def test_surgery_discount_requires_same_doctor_and_day_and_includes_paid_surgery
     assert minutes_for(clinic, [clinic, entry(A.SURGERY_2, paid=True)]) == 240
 
 
-def test_ward_roles_and_week_service():
-    lead, helper = entry(A.WARD), entry(A.WARD_HELP, doctor="b")
-    assert minutes_for(lead, [lead, helper]) == 480
-    assert minutes_for(helper, [lead, helper]) == 390
-    assert minutes_for(lead, [lead, entry(A.WEEK_SERVICE, doctor="b")]) == 540
-    assert minutes_for(lead, [lead, entry(A.WARD_HELP)]) == 540
+@pytest.mark.parametrize("paid", [False, True])
+def test_ward_hours_depend_on_same_day_week_service(paid):
+    lead, service = entry(A.WARD, paid=paid), entry(A.WEEK_SERVICE, doctor="b", paid=True)
+    assert minutes_for(lead, [lead, service]) == 480
+    assert minutes_for(service, [lead, service]) == 390
+    assert minutes_for(lead, [lead, entry(A.WEEK_SERVICE, day=MONDAY+timedelta(days=1))]) == 540
+    assert minutes_for(lead, [lead]) == 540
+
+@pytest.mark.parametrize("first,second", [
+    (a,b) for group in ((A.SURGERY_URGENT,A.SURGERY_2,A.SURGERY_3),(A.DAY_DUTY,A.NIGHT_DUTY))
+    for a in group for b in group if a != b
+])
+def test_exclusive_assignments(first, second):
+    existing = entry(first)
+    with pytest.raises(RuleError, match="error_.*_conflict"):
+        validate_assignment(entry(second), [existing])
+    validate_assignment(entry(second, doctor="b"), [existing])
+    validate_assignment(entry(second, day=MONDAY+timedelta(days=1)), [existing])
+    assert any(i.severity == "error" for i in issues_for_week(MONDAY, [existing, entry(second)]))
 
 
 def test_two_main_doctors_get_full_hours_trainee_and_contact_get_none():
@@ -158,12 +171,36 @@ def test_multidisciplinary_requires_presence_in_both_orders(absence):
     assert any(i.key=='error_unavailable' and i.activity==A.MULTIDISCIPLINARY for i in issues)
 
 
-def test_morning_overlaps_only_highlight_the_conflicting_assignments():
-    from itertools import combinations
-    from turniamo.domain import MORNING_WORK
-    for first,second in combinations(MORNING_WORK,2):
-        raw=[entry(first),entry(second),entry(A.CLINIC_PM),entry(A.ON_CALL_PM),entry(A.MULTIDISCIPLINARY)]
-        overlap=[i for i in issues_for_week(MONDAY,raw) if i.key=='warning_morning_overlap']
-        assert {i.activity for i in overlap}=={first,second}
-        assert not issues_for_week(MONDAY,[entry(first),entry(second,doctor='b')])
-        assert not issues_for_week(MONDAY,[entry(first),entry(second,day=MONDAY+timedelta(days=1))])
+def test_historical_conflicts_flag_only_involved_activities():
+    raw=[entry(A.SURGERY_2),entry(A.WARD),entry(A.ON_CALL_NIGHT),entry(A.MULTIDISCIPLINARY)]
+    conflicts=[i for i in issues_for_week(MONDAY,raw) if i.key=='error_time_conflict']
+    assert {i.activity for i in conflicts}=={A.SURGERY_2,A.WARD}
+    assert all(i.severity=='error' for i in conflicts)
+
+
+@pytest.mark.parametrize("band", [
+    (A.SURGERY_URGENT,A.SURGERY_2,A.SURGERY_3,A.WARD,A.WEEK_SERVICE,A.DAY_DUTY,A.ON_CALL_AM,A.CLINIC_AM),
+    (A.WARD,A.DAY_DUTY,A.ON_CALL_PM,A.CLINIC_PM),
+    (A.NIGHT_DUTY,A.ON_CALL_NIGHT),
+])
+def test_each_band_is_exclusive_in_both_orders(band):
+    from itertools import permutations
+    day=MONDAY+timedelta(days=5)  # Morning on-call is available on Saturday.
+    for first,second in permutations(band,2):
+        for paid in (False,True):
+            existing=entry(first,day=day,paid=paid)
+            with pytest.raises(RuleError,match='error_time_conflict'):
+                validate_assignment(entry(second,day=day),[existing])
+            validate_assignment(entry(second,day=day,doctor='b'),[existing])
+            validate_assignment(entry(second,day=day+timedelta(days=7)),[existing])
+
+
+@pytest.mark.parametrize("first,second", [
+    (A.SURGERY_2,A.CLINIC_PM),(A.SURGERY_2,A.ON_CALL_PM),
+    (A.WEEK_SERVICE,A.CLINIC_PM),(A.CLINIC_AM,A.ON_CALL_PM),
+    (A.WARD,A.NIGHT_DUTY),(A.CLINIC_PM,A.NIGHT_DUTY),
+    (A.CLINIC_PM,A.ON_CALL_NIGHT),(A.SURGERY_2,A.MULTIDISCIPLINARY),
+])
+def test_distinct_bands_remain_available(first,second):
+    validate_assignment(entry(first),[entry(second)])
+    validate_assignment(entry(second),[entry(first)])

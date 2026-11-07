@@ -29,18 +29,31 @@ def test_bulk_is_atomic_and_retains_existing_metadata():
     assert [x.id for x in s.raw_assignments()]==['leave']
 
 
-def test_bulk_ward_promotes_retained_helper_and_respects_selection_order():
+@pytest.mark.parametrize("activity", [A.WARD, A.WEEK_SERVICE])
+def test_single_doctor_slots_are_atomic_and_allow_replacement(activity):
     s,(a,b,c)=setup()
-    s.set_slot_doctors(MONDAY,A.WARD,[b,a,c])
-    assert next(x for x in s.raw_assignments() if x.doctor_id==b).activity==A.WARD
-    helper=next(x for x in s.raw_assignments() if x.doctor_id==a)
-    s.save_assignment(replace(helper,paid=True,associate_role='training',associate_name='Young'))
-    s.set_slot_doctors(MONDAY,A.WARD,[a,c])
-    leads=[x for x in s.raw_assignments() if x.activity==A.WARD]
-    assert len(leads)==1
-    # Deterministic promotion keeps the stored helper metadata, regardless of ID order.
-    retained=next(x for x in s.raw_assignments() if x.doctor_id==a)
-    assert retained.paid and retained.associate_name=='Young'
+    original=Assignment('old',MONDAY,activity,a,True,'reference','Chief')
+    s.save_assignment(original)
+    with pytest.raises(RuleError,match='error_single_doctor'):
+        s.save_assignment(Assignment('extra',MONDAY,activity,b))
+    with pytest.raises(RuleError,match='error_single_doctor'):
+        s.set_slot_doctors(MONDAY,activity,[b,c])
+    assert s.raw_assignments()==[original]
+    s.set_slot_doctors(MONDAY,activity,[a])
+    assert s.raw_assignments()==[original]
+    s.set_slot_doctors(MONDAY,activity,[b])
+    assert [(x.activity,x.doctor_id) for x in s.raw_assignments()]==[(activity,b)]
+    s.set_slot_doctors(MONDAY,activity,[])
+    assert s.raw_assignments()==[]
+
+@pytest.mark.parametrize("first,second", [(A.SURGERY_2,A.SURGERY_3),(A.DAY_DUTY,A.NIGHT_DUTY),(A.NIGHT_DUTY,A.DAY_DUTY)])
+def test_bulk_conflict_rolls_back(first,second):
+    s,(a,b,c)=setup()
+    s.set_slot_doctors(MONDAY,first,[a])
+    before=s.raw_assignments()
+    with pytest.raises(RuleError):
+        s.set_slot_doctors(MONDAY,second,[b,a])
+    assert s.raw_assignments()==before
 
 
 def test_bulk_night_off_lock_and_night_carryover():

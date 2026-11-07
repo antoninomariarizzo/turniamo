@@ -16,8 +16,6 @@ def visible_doctors(doctors, assignments, start):
 
 def assignment_text(a, names, language, show_auto=False):
     text = names[a.doctor_id] + (" *" if a.paid else "")
-    if a.activity == Activity.WARD_HELP:
-        text += " · " + tr("ward_assistant", language)
     if a.associate_role:
         text += f"\n{tr(a.associate_role, language)}: {a.associate_name}"
     if show_auto and a.source_id:

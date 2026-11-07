@@ -36,8 +36,7 @@ for n in range(7):
         add(day,A.SURGERY_URGENT,(n+1)%5)
         add(day,A.SURGERY_2,(n+2)%5)
         add(day,A.WARD,5)
-        if n%2==0:add(day,A.WARD_HELP,6)
-        add(day,A.WEEK_SERVICE,7)
+        if n%2==0:add(day,A.WEEK_SERVICE,6)
         add(day,A.CLINIC_PM,n,paid=n==2)
         add(day,A.CLINIC_AM,8)
     add(day,A.DAY_DUTY,9 if n%2==0 else 10)
@@ -45,7 +44,7 @@ for n in range(7):
     add(day,A.ON_CALL_PM,(n+1)%5,role='reference',name='Referente demo')
 add(start+timedelta(days=5),A.ON_CALL_AM,11)
 add(start,A.HOLIDAY,11);add(start+timedelta(days=1),A.RECOVERY,11)
-window=MainWindow(store);window.show()
+window=MainWindow(store);window.resize(1600,1450);window.show()
 def js(expression):
     result=[];loop=QEventLoop()
     window.view.page().runJavaScript(expression,lambda value:(result.append(value),loop.quit()))

@@ -23,7 +23,6 @@ TEXT = {
     "next_week": ("Settimana successiva", "Next week"),
     "no_results": ("Nessun medico disponibile", "No available doctors"),
     "ward_lead": ("Responsabile", "Lead"),
-    "ward_assistant": ("Aiuto", "Helper"),
     "assignment_note": ("Dettagli turno", "Shift details"),
     "ordinary_tooltip": ("Ordinarie + ferie − recuperi. Si segnala solo il superamento di 40h, valutato prima della sottrazione dei recuperi.", "Ordinary work + annual leave − time off in lieu. Only totals above 40h are flagged, before deducting time off in lieu."),
     "paid_hours": ("Ore a pagamento", "Paid hours"),
@@ -116,7 +115,7 @@ TEXT = {
         "Sala: 7h. Ambulatorio PM: 4h30m, oppure 4h dopo sala. Reperibilità PM: 4h, oppure 3h dopo sala.\n"
         "Ambulatorio AM: 6h. Reperibilità AM: 6h30m, solo sabato. Guardia diurna: 13h.\n"
         "Notte: 6h30m nel giorno iniziale + 6h30m nello smonto del giorno successivo.\n"
-        "Reparto: 9h senza aiuto, 8h con aiuto. Aiuto reparto / Weekly service: 6h30m.\n"
+        "Reparto: 9h senza ACC-W.S., 8h con ACC-W.S. ACC-W.S.: 6h30m.\n"
         "Ferie: +6h20m. Recupero: −6h20m. Assenza: 0h.\n"
         "Un incarico nel giorno successivo allo smonto è segnalato in arancione.\n"
         "Assenza, ferie e recupero impediscono nuove assegnazioni lavorative nello stesso giorno.\n"
@@ -124,7 +123,7 @@ TEXT = {
         "Surgery: 7h. PM clinic: 4h30m, or 4h after surgery. PM on-call: 4h, or 3h after surgery.\n"
         "AM clinic: 6h. AM on-call: 6h30m, Saturdays only. Day duty: 13h.\n"
         "Night: 6h30m on the start date + 6h30m on the following night's recovery day.\n"
-        "Ward: 9h without help, 8h with help. Ward help / Weekly service: 6h30m.\n"
+        "Ward: 9h without ACC-W.S., 8h with ACC-W.S. ACC-W.S.: 6h30m.\n"
         "Annual leave: +6h20m. Time off in lieu: −6h20m. Absence: 0h.\n"
         "A duty on the day after night-off is flagged orange.\n"
         "Absence, annual leave and time off in lieu prevent work assignments on that day.\n"
@@ -147,8 +146,8 @@ TEXT = {
     "error_backup_path": ("La copia deve avere un percorso diverso dall’archivio in uso.", "The backup path must differ from the current database."),
     "warning_after_on_call_night": ("Dopo la reperibilità notturna: indisponibile la mattina", "After night on-call: unavailable in the morning"),
     "warning_after_night_off": ("Smonto notte: indisponibile per tutta la giornata", "Post-night rest: unavailable all day"),
-    "warning_morning_overlap": ("Medico assegnato a più incarichi al mattino: verificare", "Doctor assigned to multiple morning duties: review"),
-    "warning_own_help": ("Stesso medico come responsabile e aiuto reparto: verificare", "Same doctor assigned as ward lead and helper: review"),
+    "error_time_conflict": ("Medico già impegnato in un incarico incompatibile nella stessa fascia oraria.", "Doctor already assigned to a conflicting duty in the same time band."),
+    "error_single_doctor": ("Questa cella può contenere un solo medico.", "This slot allows only one doctor."),
     "week_picker_hint": ("Scegli un giorno: verrà aperta la settimana da lunedì a domenica. Se esiste già, sarà caricata.",
                          "Choose a date to open its Monday–Sunday week. An existing week will be loaded."),
     "multidisciplinary": ("Multidisciplinare", "Multidisciplinary"),
@@ -190,7 +189,6 @@ TEXT = {
     "surgery_2": ("CHIR 2", "SURG 2"),
     "surgery_3": ("CHIR 3", "SURG 3"),
     "ward": ("Reparto", "Ward"),
-    "ward_help": ("Aiuto reparto", "Ward help"),
     "week_service": ("ACC-W.S.", "ACC-W.S."),
     "day_duty": ("Guardia diurna", "Day duty"),
     "night_duty": ("Guardia notturna", "Night duty"),

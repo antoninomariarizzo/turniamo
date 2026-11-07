@@ -55,7 +55,7 @@ Python è la fonte delle regole; non duplicarle in JavaScript. Tenere UI, selett
 - Multidisciplinare e Reperibilità notturna sono informative: zero ore, escluse dai conteggi mensili/annuali, niente pagamento. La reperibilità notturna non genera S.N.
 - Selettore medici: ricerca, selezione multipla, Conferma/Invio; Annulla/Esc o clic esterno non salvano. Gli indisponibili sono disabilitati e grigi, gli avvisi sono arancioni. Gli avvisi non sono blocchi di salvataggio salvo un vincolo esplicito.
 - Menu «…» per pagamento, referente e persona in formazione. Questi ultimi sono annotazioni, non assegnazioni con ore e controlli di disponibilità.
-- Reparto: primo medico responsabile, altri aiuti nella stessa cella; rimuovendo il responsabile, promuovere un aiuto. Non ricreare la vecchia colonna Aiuto reparto.
+- Reparto e ACC-W.S.: un solo medico per cella. Aiuto reparto è rimosso: l’utente ha confermato che non esistono aiuti nello storico, quindi non servono gestione legacy, promozioni o conversioni. Reparto vale 480 minuti con ACC-W.S. nello stesso giorno, 540 senza; ACC-W.S. vale 390 minuti. Questa regola del 7 novembre 2026 supera la gestione precedente degli aiuti.
 - Modifiche e rimozioni dei medici si applicano dalla settimana selezionata in avanti; non riscrivere i nomi e gli organici delle settimane precedenti.
 
 ## Regole di disponibilità e avvisi: versione finale
@@ -80,6 +80,10 @@ Dopo reperibilità notturna lunedì, solo gli incarichi mattutini del martedì s
 
 La v0.1.5 estende il precedente avviso «più sale» alle sovrapposizioni tra CHIR 1/2/3, Reparto/aiuto, ACC-W.S., Guardia diurna, Reperibilità AM e Ambulatorio AM. Evidenziare gli incarichi mattutini coinvolti dello stesso medico e giorno; non propagare questo specifico avviso agli incarichi PM. Multidisciplinare non entra nei conteggi di sovrapposizione. `Issue.activity` limita gli avvisi alle celle corrette.
 
+Dal 7 novembre 2026, CHIR 1/2/3 sono incompatibili fra loro per lo stesso medico e giorno (stessa fascia). Guardia diurna e notturna nella stessa data sono incompatibili, come confermato dall’utente. Bloccare salvataggi singoli e multipli in entrambi gli ordini e mostrare i medici incompatibili nel selettore, grigi e non selezionabili, con il motivo del blocco (la richiesta di ometterli è superata). Questa prima estensione è superata dalla regola generale per fascia descritta di seguito. Conservare e segnalare i conflitti storici.
+
+Dal successivo chiarimento del 7 novembre 2026, **un solo incarico per medico e fascia**: mattino = CHIR 1/2/3, Reparto, ACC-W.S., Guardia diurna, Ambulatorio AM, Reperibilità AM; pomeriggio = Reparto, Guardia diurna, Ambulatorio PM, Reperibilità PM; notte = Guardia notturna, Reperibilità notturna. Guardia diurna/notturna restano incompatibili nella stessa data. Anche Ambulatorio e Reperibilità sono inclusi per conferma esplicita dell’utente. Sale + Ambulatorio/Reperibilità PM restano consentiti; Multidisciplinare resta escluso. Le fasce sono regole esplicite Python, non parsing delle etichette orarie. Sovrapposizioni bloccate in entrambi gli ordini, singolo/multiplo; selettore grigio, non giallo. Smonto e riposo dopo reperibilità mantengono le regole precedenti; i dati storici in conflitto restano segnalati senza cancellazioni.
+
 ## Ore: invarianti da preservare
 
 I calcoli usano minuti interi, non decimali arrotondati. Le etichette delle fasce non determinano automaticamente le ore accreditate.
@@ -87,8 +91,8 @@ I calcoli usano minuti interi, non decimali arrotondati. Le etichette delle fasc
 | Attività | Minuti |
 | --- | ---: |
 | CHIR 1/2/3 | 420 |
-| Reparto responsabile solo / con aiuto | 540 / 480 |
-| Aiuto reparto, ACC-W.S. | 390 |
+| Reparto senza / con ACC-W.S. nello stesso giorno | 540 / 480 |
+| ACC-W.S. | 390 |
 | Guardia diurna | 780 |
 | Guardia notturna / S.N. successivo | 390 + 390 |
 | Reperibilità AM (sabato) | 390 |
@@ -145,7 +149,7 @@ Schema corrente: `PRAGMA user_version=3`, introdotto con v0.1.4; non confonderlo
 
 - Backup prima della migrazione e prima dell’importazione che sostituisce l’archivio.
 - Import accetta schemi 1, 2, 3 dopo validazione, copia privata e controllo d’integrità; rifiutare archivi di versioni future.
-- Migrazione da schema 1: conservare CHIR 3, eliminare solo le vecchie assegnazioni della colonna separata Aiuto reparto; la nuova gestione aiuti vive in Reparto.
+- Migrazione da schema 1: conservare CHIR 3, eliminare solo le vecchie assegnazioni della colonna separata Aiuto reparto; la migrazione storica resta invariata; non aggiungere una nuova migrazione per la rimozione dell’opzione Aiuto reparto.
 - Non cancellare dati incompatibili durante una normale correzione di regole. Non riaprire un archivio aggiornato con una versione dell’app che non supporta il suo schema.
 
 ## Build, test e release
@@ -169,7 +173,7 @@ Workflow **Test and package desktop app**:
 - Test, build e smoke con archivio vuoto su entrambi i sistemi.
 - `workflow_dispatch` crea artefatti scaricabili da Actions, **non** pubblica una release.
 - Il push di un tag `v*` crea la release soltanto dopo il successo di entrambe le build. Il tag deve coincidere con `project.version` in `pyproject.toml`.
-- Asset pubblici stabili: `turniamo-Windows.exe`, `turniamo-macOS-AppleSilicon.zip`, `SHA256SUMS.txt`, `LICENSE`. Windows è portatile, non un installer; macOS è Apple Silicon, non Intel, con requisito corrente macOS 14+.
+- Asset pubblici stabili: `turniamo-Windows.exe`, `turniamo-macOS-AppleSilicon.zip`, `SHA256SUMS.txt`, `LICENSE`. Windows è portatile, non un installer; macOS è Apple Silicon, non Intel. Il README distingue il supporto della dipendenza Qt 6.12 (macOS 14.4+, Windows 10 1809+/11) dai test sui runner: non dichiarare verificata ogni versione minima né dedurre i requisiti di un vecchio pacchetto dalle dipendenze locali attuali.
 - Pacchetti non firmati per distribuzione/notarizzati; le istruzioni per il primo avvio sono nel README. Non dichiararli firmati.
 - README: icona centrata in alto, titolo turniamo, badge Windows/macOS. I pulsanti puntano a `/releases/latest/download/<nome-asset>`: conservarne i nomi ed evitare il precedente errore 404.
 - Con pubblicazione autorizzata: controllare diff, privacy, versione e tag; commit dei soli file previsti; push ramo/tag preferibilmente atomico; seguire Actions fino al completamento. Verificare release non draft, asset presenti, latest corretta e risposte HTTP dei due download. Non terminare con «workflow avviato» se è stata richiesta la release completa.
@@ -190,6 +194,15 @@ Workflow **Test and package desktop app**:
 11. **Bugfix v0.1.5.** Richiesti caratteri PDF Windows corretti, blocco Multidisciplinare durante assenze e avvisi oltre la sola doppia sala. Implementati UTF-8 esplicito, titoli PDF con due punti, disponibilità comune anche agli incarichi informativi e sovrapposizioni mattutine circoscritte alle attività coinvolte. 99 test superati, incluso default cp1252 simulato; build/smoke macOS riusciti e pacchetto locale `dist/turniamo-v0.1.5-macOS-test.zip`.
 12. **Memoria e skill.** Richiesta di riversare la storia in questo `AGENTS.md` e creare una skill di versione/release. Durante il lavoro l’utente ha autorizzato: «release the v0.1.5 and continue the skill creation». La skill personale `turniamo-release` è stata creata e validata; la allowlist pubblica include questo `AGENTS.md`.
 13. **Pubblicazione v0.1.5 verificata.** Commit applicativo/tag `7c6700a` / `v0.1.5`; run https://github.com/antoninomariarizzo/turniamo/actions/runs/42239546193 completato con successo, inclusi test, build e smoke Windows/macOS. Release https://github.com/antoninomariarizzo/turniamo/releases/tag/v0.1.5 pubblica, stabile e latest al momento della verifica; entrambi i pacchetti, checksum e licenza presenti, download Windows/macOS HTTP 200. Questo aggiornamento documentale è successivo al tag: non spostare il tag per includerlo.
+14. **Revisione README locale.** Su richiesta dell’utente, completate entrambe le lingue con backup/ripristino, aggiornamenti, checksum, problemi, sorgenti e verifiche per contributori; chiarite terminologia UI e differenza fra supporto Qt e sistemi testati. `docs/calendar-demo.png` mostra una settimana con soli dati fittizi, generata da un archivio in memoria; la allowlist ammette soltanto questo nuovo percorso. Nessuna nuova versione o pubblicazione è implicita nella modifica documentale.
+
+15. **Correzioni locali del 7 novembre 2026.** Reparto/ACC-W.S. a selezione singola; ore Reparto dipendenti da ACC-W.S.; eliminata la gestione degli aiuti, assenti nello storico come confermato dall’utente. Bloccate assegnazioni dello stesso medico a più sale e a Guardia diurna/notturna nello stesso giorno. README bilingue e immagine dimostrativa aggiornati. 123 test superati, build e smoke macOS riusciti; pacchetto locale `dist/turniamo-v0.1.5-macOS-bugfix-test.zip` (stessa versione dichiarata, correzioni locali non pubblicate). Nessuna nuova release autorizzata.
+
+16. **Selettori uniformati.** Su richiesta successiva del 7 novembre 2026, anche i conflitti fra sale e fra Guardia diurna/notturna lasciano il medico visibile, grigio e non selezionabile. Il blocco prevale sul colore arancione degli avvisi. README aggiornato in entrambe le lingue. 123 test superati, inclusa verifica UI di colore e selezione disabilitata; build/smoke macOS riusciti. Pacchetto locale aggiornato: `dist/turniamo-v0.1.5-macOS-bugfix-test2.zip`.
+
+17. **Un incarico per fascia.** Esteso il blocco alle sovrapposizioni tra sale, Reparto, ACC-W.S., Guardia e, dopo conferma esplicita, Ambulatorio/Reperibilità. Selettori e salvataggi usano la stessa regola Python; README bilingue aggiornato. 137 test superati; build e smoke macOS riusciti. Pacchetto locale: `dist/turniamo-v0.1.5-macOS-bugfix-test3.zip`. Nessuna nuova release pubblicata.
+
+18. **Release v0.1.6 autorizzata.** Il 7 novembre 2026, dopo la prova delle correzioni, l’utente ha chiesto «perfetto, lancia la nuova release». Versione incrementata a 0.1.6; pubblicazione e verifiche remote in corso.
 
 ## Come mantenere questa memoria
 

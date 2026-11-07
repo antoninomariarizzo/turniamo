@@ -17,14 +17,14 @@ from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWidgets import QFileDialog, QMainWindow, QMessageBox
 
 from .domain import (Activity, Assignment, RuleError, duration, issues_for_week,
-                     minutes_for, monday, totals_for_week, validate_assignment)
+                     minutes_for, monday, totals_for_week, validate_assignment, SINGLE_DOCTOR_ACTIVITIES)
 from .exports import document_html, export_excel, export_pdf
 from .i18n import TEXT, day_label, tr, week_label
 from .layout import COLUMNS, SUBLABELS, TIMES
 from .storage import Store
 from .presentation import presentation_data
 from .reports import period_reports
-from .domain import effective_assignments, rest_periods, rest_warning, morning_conflict
+from .domain import effective_assignments, rest_periods, rest_warning
 
 
 def default_export_path(filename):
@@ -163,31 +163,25 @@ class Bridge(QObject):
         raise ValueError("Assignment no longer exists")
 
     def slot_entries(self, day, activity):
-        activities = (Activity.WARD, Activity.WARD_HELP) if activity == Activity.WARD else (activity,)
-        return [a for a in self.store.week_context(self.start) if a.day == day and a.activity in activities]
-
-    def chosen_activity(self, day, activity):
-        if activity == Activity.WARD and any(a.activity == Activity.WARD for a in self.slot_entries(day, activity)):
-            return Activity.WARD_HELP
-        return activity
+        return [a for a in self.store.week_context(self.start) if a.day == day and a.activity == activity]
 
     def choices(self, day, activity):
         existing = {a.doctor_id: a for a in self.slot_entries(day, activity)}
         raw = self.store.raw_assignments(day - timedelta(days=1), day + timedelta(days=1))
         result = []
         periods = rest_periods(raw)
+        # A single-choice picker replaces the current occupant on confirmation.
+        validation_raw = [a for a in raw if a.id not in {x.id for x in existing.values()}] if activity in SINGLE_DOCTOR_ACTIVITIES else raw
         for doctor in self.store.week_doctors(self.start):
             entry = existing.get(doctor.id)
             error = self.t("error_derived") if entry and entry.source_id else ""
             if not entry:
                 try:
-                    validate_assignment(Assignment(str(uuid4()), day, self.chosen_activity(day, activity), doctor.id), raw)
+                    validate_assignment(Assignment(str(uuid4()), day, activity, doctor.id), validation_raw)
                 except RuleError as exc:
                     error = self.t(exc.key)
             warning = rest_warning(day, doctor.id, activity, periods)
-            if not warning and morning_conflict(day, doctor.id, activity, raw):
-                warning = "warning_morning_overlap"
-            result.append({"warning": bool(warning), "id": doctor.id, "name": doctor.name, "selected": bool(entry),
+            result.append({"warning": bool(warning) and not error, "id": doctor.id, "name": doctor.name, "selected": bool(entry),
                            "assignment": entry.id if entry else None, "disabled": bool(error), "reason": error or (self.t(warning) if warning else "")})
         return result
 
@@ -220,16 +214,14 @@ class Bridge(QObject):
             current = next((a for a in self.slot_entries(day, activity) if a.doctor_id == args["doctor"]), None)
             if current:
                 self.store.delete_assignment(current.id)
-                self.promote_ward(day)
             else:
-                self.store.save_assignment(Assignment(str(uuid4()), day, self.chosen_activity(day, activity), args["doctor"]))
+                self.store.save_assignment(Assignment(str(uuid4()), day, activity, args["doctor"]))
         elif command == "update_assignment":
             a = self.find_assignment(args["id"])
             self.store.save_assignment(replace(a, paid=bool(args["paid"]), associate_role=args["role"], associate_name=args["name"].strip()))
         elif command == "delete_assignment":
             a = self.find_assignment(args["id"])
             self.store.delete_assignment(a.id)
-            self.promote_ward(a.day)
         elif command == "export":
             self.export(args["kind"])
         elif command == "export_database":
@@ -253,11 +245,6 @@ class Bridge(QObject):
                         self.language = "it"
         else:
             raise ValueError("Unknown command")
-
-    def promote_ward(self, day):
-        entries = self.slot_entries(day, Activity.WARD)
-        if entries and not any(a.activity == Activity.WARD for a in entries):
-            self.store.save_assignment(replace(entries[0], activity=Activity.WARD))
 
     def finish_export(self, args):
         try:
