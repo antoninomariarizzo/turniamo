@@ -1,6 +1,6 @@
 # turniamo — memoria del progetto e istruzioni per gli agenti
 
-Questo file conserva la storia operativa e le decisioni di prodotto della chat iniziale, fino alla pubblicazione della v0.1.5 del 6 novembre 2026. Non è una trascrizione verbatim: conserva richieste, correzioni, motivazioni, risultati e vincoli necessari per continuare in una nuova chat. Le istruzioni successive dell’utente prevalgono; non ripristinare regole storiche superate.
+Questo file conserva la storia operativa e le decisioni di prodotto della chat iniziale, fino alla pubblicazione della v0.1.6 del 7 novembre 2026. Non è una trascrizione verbatim: conserva richieste, correzioni, motivazioni, risultati e vincoli necessari per continuare in una nuova chat. Le istruzioni successive dell’utente prevalgono; non ripristinare regole storiche superate.
 
 ## Identità, repository e collaborazione
 
@@ -202,7 +202,7 @@ Workflow **Test and package desktop app**:
 
 17. **Un incarico per fascia.** Esteso il blocco alle sovrapposizioni tra sale, Reparto, ACC-W.S., Guardia e, dopo conferma esplicita, Ambulatorio/Reperibilità. Selettori e salvataggi usano la stessa regola Python; README bilingue aggiornato. 137 test superati; build e smoke macOS riusciti. Pacchetto locale: `dist/turniamo-v0.1.5-macOS-bugfix-test3.zip`. Nessuna nuova release pubblicata.
 
-18. **Release v0.1.6 autorizzata.** Il 7 novembre 2026, dopo la prova delle correzioni, l’utente ha chiesto «perfetto, lancia la nuova release». Versione incrementata a 0.1.6; pubblicazione e verifiche remote in corso.
+18. **Release v0.1.6 pubblicata e verificata.** Il 7 novembre 2026, dopo la prova delle correzioni, l’utente ha chiesto «perfetto, lancia la nuova release». Commit `34713c3`, tag `v0.1.6`; workflow https://github.com/antoninomariarizzo/turniamo/actions/runs/42377467882 riuscito, inclusi test, build e smoke Windows/macOS. Release https://github.com/antoninomariarizzo/turniamo/releases/tag/v0.1.6 pubblica, stabile e latest al momento della verifica. Pacchetti Windows/macOS, checksum e licenza presenti; entrambi i download HTTP 200. Schema SQLite invariato a 3. Questo aggiornamento della memoria è successivo al tag: non spostarlo.
 
 ## Come mantenere questa memoria
 
