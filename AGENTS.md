@@ -1,6 +1,6 @@
 # turniamo — memoria del progetto e istruzioni per gli agenti
 
-Questo file conserva la storia operativa e le decisioni di prodotto della chat iniziale, fino alla pubblicazione della v0.1.6 del 7 novembre 2026. Non è una trascrizione verbatim: conserva richieste, correzioni, motivazioni, risultati e vincoli necessari per continuare in una nuova chat. Le istruzioni successive dell’utente prevalgono; non ripristinare regole storiche superate.
+Questo file conserva la storia operativa e le decisioni di prodotto della chat iniziale, fino alla pubblicazione della v0.1.7 del 9 novembre 2026. Non è una trascrizione verbatim: conserva richieste, correzioni, motivazioni, risultati e vincoli necessari per continuare in una nuova chat. Le istruzioni successive dell’utente prevalgono; non ripristinare regole storiche superate.
 
 ## Identità, repository e collaborazione
 
@@ -215,7 +215,7 @@ Workflow **Test and package desktop app**:
 
 21. **Eccezioni S.N. e recuperi annuali, 9 novembre 2026.** Nel giorno dello smonto (automatico o manuale), consentire Reperibilità notturna e Ambulatorio AM/PM solo a pagamento, entrambi gialli. Gli altri incarichi lavorativi/informativi restano bloccati. Questa regola supera il precedente blocco totale, senza spostarlo al giorno dopo S.N. Controllare entrambi gli ordini e impedire la rimozione del pagamento dall’ambulatorio durante S.N. Il selettore indica “Solo a pagamento dopo S.N.” e crea l’ambulatorio pagato; il backend diretto rifiuta l’ambulatorio ordinario. Ferie/Assenza e incompatibilità Recupero/S.N. invariate. Aggiunta colonna Recuperi al Riepilogo annuale: un conteggio per incarico nell’anno, incluse date pianificate e persone rimosse presenti nello storico, con dettagli delle date. UI/PDF/Excel condividono le colonne annuali Python. 224 test superati; controllo visivo di selettore ed annuale riuscito; build e smoke macOS riusciti. Pacchetto locale `dist/turniamo-v0.1.6-macOS-corrections-test3.zip`. Nessuna nuova release autorizzata.
 
-22. **Release v0.1.7 autorizzata, 9 novembre 2026.** Dopo la prova manuale l’utente ha richiesto la release su GitHub. Versione impostata a 0.1.7, note bilingui aggiornate; pubblicazione e verifiche remote in corso. Ultima suite locale: 224 test superati, build e smoke macOS riusciti.
+22. **Release v0.1.7 pubblicata, 9 novembre 2026.** Dopo la prova manuale l’utente ha autorizzato la release su GitHub. Commit/tag `65d8fd6` / `v0.1.7`, note bilingui aggiornate. Run https://github.com/antoninomariarizzo/turniamo/actions/runs/42671841150 riuscito al terzo tentativo: 224 test, build e smoke su Windows e macOS. Il primo tentativo aveva un timeout intermittente del test del selettore Reparto; il secondo ha completato macOS ma GitHub ha segnalato un errore interno prima di avviare Windows. Retry sullo stesso codice, senza spostare il tag. Release https://github.com/antoninomariarizzo/turniamo/releases/tag/v0.1.7 pubblica, stabile e latest alla verifica; entrambi i pacchetti, checksum e licenza presenti. Download latest Windows/macOS HTTP 200, checksum coerenti con i digest degli asset GitHub. Questo aggiornamento documentale segue il tag e non lo modifica.
 
 ## Come mantenere questa memoria
 
