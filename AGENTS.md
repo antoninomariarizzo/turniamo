@@ -1,6 +1,6 @@
 # turniamo — memoria del progetto e istruzioni per gli agenti
 
-Questo file conserva la storia operativa e le decisioni di prodotto della chat iniziale, fino alla pubblicazione della v0.1.7 del 9 novembre 2026. Non è una trascrizione verbatim: conserva richieste, correzioni, motivazioni, risultati e vincoli necessari per continuare in una nuova chat. Le istruzioni successive dell’utente prevalgono; non ripristinare regole storiche superate.
+Questo file conserva la storia operativa e le decisioni di prodotto della chat iniziale, fino alla pubblicazione della v0.1.8 del 9 novembre 2026. Non è una trascrizione verbatim: conserva richieste, correzioni, motivazioni, risultati e vincoli necessari per continuare in una nuova chat. Le istruzioni successive dell’utente prevalgono; non ripristinare regole storiche superate.
 
 ## Identità, repository e collaborazione
 
@@ -225,6 +225,6 @@ Aggiornare regole e cronologia quando cambia una decisione sostanziale o una rel
 
 Reperibilità pomeridiana 14:00–18:00 del sabato e della domenica: zero minuti, anche se a pagamento. Lun–ven invariati (240 minuti, 180 dopo sala). Regola condivisa da riepiloghi, UI, PDF ed Excel; README bilingue aggiornato. Suite locale: 239 test superati. Nessuna nuova pubblicazione autorizzata. Su successiva richiesta esplicita dell’utente, AGENTS.md torna tracciato nel repository. Build e smoke macOS riusciti; pacchetto locale `dist/turniamo-v0.1.7-macOS-weekend-test.zip`.
 
-## Release v0.1.8 autorizzata
+## Release v0.1.8 pubblicata
 
-Il 9 novembre 2026 l’utente ha autorizzato push e release della correzione della reperibilità PM del weekend. Versione 0.1.8, note bilingui aggiornate; 239 test locali e build/smoke macOS già riusciti sugli stessi sorgenti applicativi. Pubblicazione e verifiche remote in corso.
+Il 9 novembre 2026 l’utente ha autorizzato push e release della correzione della reperibilità PM del weekend. Commit/tag `08ac2d5` / `v0.1.8`, note bilingui aggiornate. Workflow https://github.com/antoninomariarizzo/turniamo/actions/runs/42710800824 riuscito: 239 test, build e smoke su Windows e macOS. Release https://github.com/antoninomariarizzo/turniamo/releases/tag/v0.1.8 pubblica, stabile e latest alla verifica. Entrambi i pacchetti, checksum e licenza presenti; download latest HTTP 200 e checksum coerenti con i digest GitHub. AGENTS.md incluso nel push come richiesto. Questo aggiornamento documentale segue il tag senza modificarlo.
