@@ -162,6 +162,8 @@ def minutes_for(a: Assignment, assignments: list[Assignment]) -> int:
     if a.activity == Activity.DAY_DUTY:
         return 780
     if a.activity == Activity.ON_CALL_PM:
+        if a.day.weekday() >= 5:
+            return 0
         return 180 if has_surgery else 240
     if a.activity == Activity.CLINIC_PM:
         return 240 if has_surgery else 270

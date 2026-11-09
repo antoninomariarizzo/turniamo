@@ -492,3 +492,26 @@ def test_post_night_clinic_picker_saves_paid_and_warns(app,activity,manual):
         window.bridge.dispatch('update_assignment',{'id':saved.id,'paid':False,'role':'','name':''})
     assert next(a for a in store.raw_assignments() if a.id==saved.id).paid
     window.close();store.close()
+
+
+def test_weekend_afternoon_on_call_zero_in_ui_pdf_and_excel(app, tmp_path):
+    from turniamo.presentation import presentation_data
+    store = Store(':memory:')
+    doctor = store.save_doctor('Alpha')
+    store.create_week(MONDAY)
+    for offset in (5, 6):
+        store.save_assignment(Assignment(str(offset), MONDAY + timedelta(days=offset), A.ON_CALL_PM, doctor))
+    context, doctors = store.week_context(MONDAY), store.week_doctors(MONDAY)
+    data = presentation_data(MONDAY, context, doctors, 'it')
+    assert len(data['assignments']) == 2
+    assert all(a['minutes'] == 0 for a in data['assignments'])
+    assert data['totals'][doctor]['ordinary'] == '0h00m'
+    html = document_html(MONDAY, context, doctors, 'it')
+    assert '"minutes": 240' not in html
+    path = tmp_path / 'weekend.xlsx'
+    export_excel(path, MONDAY, context, doctors, 'it')
+    workbook = load_workbook(path)
+    detail = next(sheet for sheet in workbook if sheet.sheet_state == 'hidden')
+    assert [row[6] for row in detail.iter_rows(min_row=2, values_only=True)] == [0, 0]
+    workbook.close()
+    store.close()

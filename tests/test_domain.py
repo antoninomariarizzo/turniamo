@@ -310,3 +310,16 @@ def test_post_night_exception_does_not_override_absences_or_overlap():
         validate_assignment(entry(A.CLINIC_PM,paid=True),raw)
     with pytest.raises(RuleError,match='error_unavailable'):
         validate_assignment(entry(A.ON_CALL_NIGHT),raw)
+
+
+@pytest.mark.parametrize("offset", range(7))
+@pytest.mark.parametrize("paid", [False, True])
+def test_afternoon_on_call_weekend_zero_hours(offset, paid):
+    assignment = entry(A.ON_CALL_PM, day=MONDAY + timedelta(days=offset), paid=paid)
+    expected = 0 if offset >= 5 else 240
+    assert minutes_for(assignment, [assignment]) == expected
+    total = totals_for_week(MONDAY, [assignment], [Doctor("a", "Alpha")])["a"]
+    assert total.ordinary == (0 if paid else expected)
+    assert total.paid == (expected if paid else 0)
+    surgery = entry(A.SURGERY_2, day=assignment.day)
+    assert minutes_for(assignment, [assignment, surgery]) == (0 if offset >= 5 else 180)

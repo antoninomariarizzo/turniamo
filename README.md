@@ -304,7 +304,7 @@ esatti anche quando i totali in ore sono visualizzati con due decimali.
 | Guardia notturna | 6h30m nella data di inizio |
 | S.N., automatico o manuale | 6h30m nel giorno di smonto |
 | Reperibilità mattino | 6h30m, solo sabato |
-| Reperibilità pomeriggio | 4h; 3h dopo sala |
+| Reperibilità pomeriggio | Lun–ven: 4h; 3h dopo sala. Sabato e domenica: 0h |
 | Reperibilità notturna | 0h |
 | Ambulatorio mattino | 6h |
 | Ambulatorio pomeriggio | 4h30m; 4h dopo sala |
@@ -699,7 +699,7 @@ exact minutes even when hour totals are displayed with two decimal places.
 | Night duty | 6h30m on the starting date |
 | Post-night entry, automatic or manual | 6h30m on the post-night day |
 | Morning on-call | 6h30m, Saturdays only |
-| Afternoon on-call | 4h; 3h after surgery |
+| Afternoon on-call | Mon–Fri: 4h; 3h after surgery. Saturday and Sunday: 0h |
 | Night on-call | 0h |
 | Morning outpatient clinic | 6h |
 | Afternoon outpatient clinic | 4h30m; 4h after surgery |
