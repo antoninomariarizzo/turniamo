@@ -29,3 +29,6 @@ exports/
 .env.*
 *.pem
 *.key
+
+# Local agent instructions
+AGENTS.md
