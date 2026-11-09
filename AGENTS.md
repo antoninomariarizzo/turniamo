@@ -224,3 +224,7 @@ Aggiornare regole e cronologia quando cambia una decisione sostanziale o una rel
 ## Correzione locale successiva alla v0.1.7
 
 Reperibilità pomeridiana 14:00–18:00 del sabato e della domenica: zero minuti, anche se a pagamento. Lun–ven invariati (240 minuti, 180 dopo sala). Regola condivisa da riepiloghi, UI, PDF ed Excel; README bilingue aggiornato. Suite locale: 239 test superati. Nessuna nuova pubblicazione autorizzata. Su successiva richiesta esplicita dell’utente, AGENTS.md torna tracciato nel repository. Build e smoke macOS riusciti; pacchetto locale `dist/turniamo-v0.1.7-macOS-weekend-test.zip`.
+
+## Release v0.1.8 autorizzata
+
+Il 9 novembre 2026 l’utente ha autorizzato push e release della correzione della reperibilità PM del weekend. Versione 0.1.8, note bilingui aggiornate; 239 test locali e build/smoke macOS già riusciti sugli stessi sorgenti applicativi. Pubblicazione e verifiche remote in corso.
