@@ -103,7 +103,9 @@ non sostituisce una firma del produttore.
    salva le scelte; **Annulla / Esc** o un clic fuori dal menu le scarta.
    I medici indisponibili sono disabilitati e grigi; gli avvisi sono arancioni.
 3. Usa il pulsante **…** accanto a un incarico per indicare pagamento, persona in
-   formazione o referente. **Reparto** e **ACC-W.S.** consentono un solo medico per cella;
+   formazione o referente. **Elimina turno** rimuove l’incarico; lo smonto automatico
+   si elimina rimuovendo la notte di origine. La persona associata si imposta con tre opzioni visibili
+   (Nessuna, Persona in formazione, Referente), senza menu nativo a tendina. **Reparto** e **ACC-W.S.** consentono un solo medico per cella;
    selezionando un altro medico si sostituisce quello presente alla conferma.
 4. Consulta **Ore settimanali**, **Turni mensili** e **Riepilogo annuale** per controllare
    ore e turni. I pulsanti **i** spiegano i totali e gli incarichi che li compongono.
@@ -187,16 +189,19 @@ backup, esportazioni o dati reali dei medici.
 #### Disponibilità e sovrapposizioni
 
 - Lo stesso medico non può ricevere due volte la stessa attività nello stesso giorno.
-- Ogni medico può svolgere **un solo incarico per fascia oraria**. Al mattino
-  sono incompatibili fra loro CHIR 1/2/3, Reparto, ACC-W.S., Guardia diurna,
-  Ambulatorio AM e Reperibilità AM. Al pomeriggio sono incompatibili fra loro
-  Reparto, Guardia diurna, Ambulatorio PM e Reperibilità PM. Di notte sono
-  incompatibili Guardia notturna e Reperibilità notturna. Guardia diurna e notturna
-  restano incompatibili nella stessa data.
-- Il medico già impegnato resta visibile nel selettore, **grigio e non selezionabile**,
-  con il motivo del blocco. Il controllo vale anche al salvataggio, in entrambi
-  gli ordini di inserimento. Sala al mattino + Ambulatorio/Reperibilità PM restano
-  consentiti. Multidisciplinare resta escluso dal controllo delle sovrapposizioni.
+- Nella stessa giornata ogni medico può svolgere **una sola attività tra CHIR 1,
+  CHIR 2, CHIR 3, Reparto, ACC-W.S. e Guardia** (diurna o notturna), indipendentemente
+  dall’orario. CHIR 1/2/3, Reparto e ACC-W.S. non si svolgono sabato e domenica: le celle sono grigie e disabilitate.
+- Gli altri incarichi della stessa giornata non possono sovrapporsi negli orari.
+  Ambulatorio e Reperibilità sono combinabili quando gli intervalli sono distinti.
+  Restano consentite sala + Ambulatorio/Reperibilità PM, con i conteggi dopo sala.
+- La **Guardia** mantiene le fasce 07:45–20:30 e 19:45–08:30. Può essere abbinata
+  ad Ambulatorio o Reperibilità senza sovrapposizioni, con avviso giallo su entrambi. Ad esempio,
+  Ambulatorio PM + Guardia notturna è consentito con avviso; Ambulatorio PM +
+  Guardia diurna è bloccato. Anche Guardia diurna + Reperibilità notturna si sovrappongono.
+- I medici incompatibili restano visibili, **grigi e non selezionabili**, con il motivo
+  del blocco. Il controllo vale anche al salvataggio, in entrambi gli ordini di
+  inserimento. Multidisciplinare resta escluso dal controllo delle sovrapposizioni.
 - Gli avvisi arancioni permettono di salvare; le incompatibilità di disponibilità
   impediscono l’inserimento. Eventuali incompatibilità già presenti nell’archivio
   sono segnalate senza cancellare automaticamente gli incarichi.
@@ -204,17 +209,20 @@ backup, esportazioni o dati reali dei medici.
   inclusi Multidisciplinare e Reperibilità notturna. Non possono essere combinati
   tra loro. Il vincolo vale in entrambi gli ordini di inserimento, con l’eccezione
   dello smonto descritta sotto.
-- **Reperibilità mattutina** è selezionabile soltanto il sabato.
+- La cella **Reperibilità mattutina** compare soltanto il sabato, anche negli export.
 
 #### Notti e smonto
 
 - **Guardia notturna** genera automaticamente **S.N.** nel giorno successivo,
   anche tra settimane, mesi o anni diversi. Lo smonto derivato si modifica
   intervenendo sulla notte di origine.
-- Il giorno di S.N. è considerato indisponibile per l’intera giornata: gli altri
-  incarichi lavorativi o informativi sono segnalati in arancione, anche pomeridiani
-  e notturni. La cella S.N. non riceve questo avviso per il solo fatto di essere uno
-  smonto; il giorno seguente non è coinvolto.
+- Nel giorno di **S.N.** sono consentiti solo **Reperibilità notturna** e
+  **Ambulatorio a pagamento (AM o PM)**, evidenziati in giallo. Il selettore
+  dell’Ambulatorio mostra “Solo a pagamento dopo S.N.” e salva l’incarico pagato;
+  non si può togliere il pagamento finché resta lo smonto. Gli altri incarichi
+  lavorativi/informativi sono grigi e non selezionabili. La regola vale anche per
+  lo smonto manuale e in entrambi gli ordini di inserimento. Notte lunedì→martedì:
+  le restrizioni valgono martedì, non mercoledì. La cella S.N. non è un conflitto.
 - Se manca la notte precedente nell’archivio, è possibile inserire **S.N. manuale**.
   Inserendo poi la notte, lo smonto automatico sostituisce quello manuale nei
   conteggi, senza duplicare le ore; eredita il pagamento dalla notte di origine.
@@ -223,9 +231,12 @@ backup, esportazioni o dati reali dei medici.
   coesistere con S.N., che contabilizza lavoro già svolto durante la notte.
 - Dopo **Reperibilità notturna**, solo gli incarichi mattutini del giorno successivo
   sono segnalati in arancione; il pomeriggio resta disponibile. Se c’è anche S.N.,
-  prevale l’avviso per tutta la giornata. La reperibilità notturna non genera smonto.
+  si applicano le restrizioni dello smonto, con le due eccezioni descritte sopra. La reperibilità notturna non genera smonto.
 
 #### Ore, pagamento e annotazioni
+
+- **Ambulatorio PM** mostra 14:30–19:00. Il conteggio resta 4h dopo CHIR 1/2/3,
+  altrimenti 4h30m; le etichette orarie non cambiano i minuti accreditati.
 
 - **Reparto** e **ACC-W.S.** accettano al massimo un medico per cella. Il medico
   di Reparto riceve 8h se nello stesso giorno è assegnato un medico ad ACC-W.S.,
@@ -266,6 +277,11 @@ backup, esportazioni o dati reali dei medici.
 - **Ambulatori a pagamento:** ogni fascia AM/PM conta separatamente, anche nel
   fine settimana. **Notti a pagamento:** una per guardia, nella data di inizio,
   senza ricontare lo smonto.
+
+- **Recuperi:** numero di incarichi Recupero nell’anno selezionato per ciascuna
+  persona, incluse persone rimosse presenti nello storico e date pianificate.
+  Conta l’intero archivio annuale, non solo la settimana visualizzata; l’icona **i**
+  elenca le date. Il totale è un numero di turni, non di ore.
 
 #### Esportazioni
 
@@ -480,6 +496,9 @@ a publisher signature.
    **Cancel / Esc** or clicking outside the picker discards them. Unavailable doctors
    are disabled and grey; warnings are orange.
 3. Use **…** beside an assignment to set **Paid separately**, **In training** or **Contact**.
+   **Delete shift** removes the assignment; remove the originating night to delete
+   its automatic post-night entry. The associated person uses three visible options (None, In training, Contact),
+   without a native dropdown.
    **Ward** and **ACC-W.S.** allow one doctor per slot; selecting another doctor
    replaces the current doctor when confirmed.
 4. Open **Weekly hours**, **Monthly shifts** and **Annual summary** to review
@@ -564,14 +583,19 @@ exports or real doctor data.
 #### Availability and overlaps
 
 - A doctor cannot receive the same activity twice on the same day.
-- Each doctor may perform **only one duty per time band**. In the morning,
-  SURG 1/2/3, Ward, ACC-W.S., Day duty, AM clinic and AM on-call are mutually
-  exclusive. In the afternoon, Ward, Day duty, PM clinic and PM on-call are
-  mutually exclusive. At night, Night duty and Night on-call are mutually exclusive.
-  Day and night duty remain incompatible on the same date.
-- Doctors already assigned remain visible in the picker, **grey and disabled**,
-  with the reason for the conflict. Saving enforces the same rule in either
-  insertion order. Morning surgery + PM clinic/on-call remain allowed.
+- Each doctor can perform **only one of SURG 1, SURG 2, SURG 3, Ward, ACC-W.S.
+  and Day/Night duty** on the same date, regardless of time. SURG 1/2/3, Ward
+  and ACC-W.S. are unavailable on Saturdays
+  and Sundays: their cells are grey and disabled.
+- Other assignments on the same date must not overlap in clock time. Clinic and
+  on-call can be combined when their intervals are separate. Surgery + PM clinic/
+  on-call remain allowed, with the established after-surgery credited hours.
+- **Duty** retains its 07:45–20:30 and 19:45–08:30 intervals. Combining it with
+  a nonoverlapping clinic or on-call assignment shows a yellow warning on both. For example,
+  PM clinic + Night duty is allowed with a warning; PM clinic + Day duty is blocked.
+  Day duty + Night on-call also overlap.
+- Incompatible doctors remain visible, **grey and disabled**, with the reason for
+  the conflict. Saving enforces the same rule in either insertion order.
   Multidisciplinary assignments remain excluded from overlap checks.
 - Orange warnings allow saving; availability conflicts prevent insertion.
   Existing conflicts in the archive are flagged without automatically deleting assignments.
@@ -579,17 +603,19 @@ exports or real doctor data.
   same day, including Multidisciplinary and Night on-call assignments. They cannot
   be combined with each other. These restrictions apply in either insertion order,
   with the post-night exception described below.
-- **Morning on-call** is available only on Saturdays.
+- The **Morning on-call** slot appears only on Saturdays, including in exports.
 
 #### Nights and Night-off
 
 - **Night duty** automatically generates **Night-off** (post-night entry; **S.N.** in Italian) on
   the following day, including across weeks, months and years. Edit the originating
   night duty to change its derived post-night entry.
-- The entire post-night day is treated as unavailable: other work or informational
-  assignments are highlighted in orange, including afternoon and night assignments.
-  The post-night cell itself does not receive this warning simply for being a
-  post-night entry; the day after it is unaffected.
+- On the **post-night day**, only **Night on-call** and **paid clinics (AM or PM)**
+  are allowed, highlighted in yellow. The clinic picker displays “Paid only after
+  night duty” and saves the assignment as paid; payment cannot be removed while
+  post-night rest remains. Other work/informational duties are grey and disabled.
+  This applies to manual post-night entries and either insertion order. A Monday→Tuesday
+  night restricts Tuesday, not Wednesday. The post-night cell itself is not a conflict.
 - If the preceding night is missing from the archive, a **manual post-night entry**
   can be added. Adding the night later replaces the manual entry in calculations
   without doubling hours; the derived entry inherits the night duty’s payment status.
@@ -599,9 +625,12 @@ exports or real doctor data.
   work already performed during the night.
 - After **Night on-call**, only the next day’s morning assignments receive an orange
   warning; the afternoon remains available. If actual post-night rest also applies,
-  the warning covers the entire day. Night on-call does not generate post-night rest.
+  the post-night restrictions and the two exceptions above apply. Night on-call does not generate post-night rest.
 
 #### Hours, payment and annotations
+
+- **PM clinic** displays 14:30–19:00. Credited hours remain 4h after SURG 1/2/3,
+  otherwise 4h30m; displayed clock times do not change credited minutes.
 
 - **Ward** and **ACC-W.S.** each allow at most one doctor per slot. The Ward doctor
   receives 8h when a doctor is assigned to ACC-W.S. on the same day, otherwise 9h.
@@ -643,6 +672,11 @@ exports or real doctor data.
 - **Paid outpatient clinics:** each AM/PM slot counts separately, including weekends.
   **Paid nights:** one per night duty, on its starting date, without counting the
   post-night entry again.
+
+- **Time off in lieu:** number of recovery assignments per person in the selected
+  year, including former doctors and planned dates. Counts cover the whole annual
+  archive, not just the displayed week. The **i** icon lists the dates. This is a
+  shift count, not an hours total.
 
 #### Exports
 

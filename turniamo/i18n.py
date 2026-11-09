@@ -48,6 +48,7 @@ TEXT = {
     "main_doctor": ("Medico principale", "Main doctor"),
     "add": ("Aggiungi", "Add"),
     "edit": ("Modifica", "Edit"),
+    "delete_assignment": ("Elimina turno", "Delete shift"),
     "remove": ("Rimuovi", "Remove"),
     "save": ("Salva", "Save"),
     "cancel": ("Annulla", "Cancel"),
@@ -117,7 +118,7 @@ TEXT = {
         "Notte: 6h30m nel giorno iniziale + 6h30m nello smonto del giorno successivo.\n"
         "Reparto: 9h senza ACC-W.S., 8h con ACC-W.S. ACC-W.S.: 6h30m.\n"
         "Ferie: +6h20m. Recupero: −6h20m. Assenza: 0h.\n"
-        "Un incarico nel giorno successivo allo smonto è segnalato in arancione.\n"
+        "Nel giorno dello smonto sono consentiti solo Reperibilità notturna e Ambulatorio a pagamento, con avviso.\n"
         "Assenza, ferie e recupero impediscono nuove assegnazioni lavorative nello stesso giorno.\n"
         "Ogni medico principale riceve l’intero peso dell’attività. Referenti e persone in formazione: 0h.",
         "Surgery: 7h. PM clinic: 4h30m, or 4h after surgery. PM on-call: 4h, or 3h after surgery.\n"
@@ -125,7 +126,7 @@ TEXT = {
         "Night: 6h30m on the start date + 6h30m on the following night's recovery day.\n"
         "Ward: 9h without ACC-W.S., 8h with ACC-W.S. ACC-W.S.: 6h30m.\n"
         "Annual leave: +6h20m. Time off in lieu: −6h20m. Absence: 0h.\n"
-        "A duty on the day after night-off is flagged orange.\n"
+        "Only night on-call and paid clinics are allowed on the post-night rest day, with a warning.\n"
         "Absence, annual leave and time off in lieu prevent work assignments on that day.\n"
         "Every main doctor receives the full activity hours. Contacts and trainees: 0h."),
     "export_excel": ("Esporta Excel", "Export Excel"),
@@ -145,8 +146,10 @@ TEXT = {
     "error_derived": ("Modifica la notte precedente: questo smonto è automatico.", "Edit the previous night: this night-off is automatic."),
     "error_backup_path": ("La copia deve avere un percorso diverso dall’archivio in uso.", "The backup path must differ from the current database."),
     "warning_after_on_call_night": ("Dopo la reperibilità notturna: indisponibile la mattina", "After night on-call: unavailable in the morning"),
-    "warning_after_night_off": ("Smonto notte: indisponibile per tutta la giornata", "Post-night rest: unavailable all day"),
-    "error_time_conflict": ("Medico già impegnato in un incarico incompatibile nella stessa fascia oraria.", "Doctor already assigned to a conflicting duty in the same time band."),
+    "error_night_off_unavailable": ("Smonto notte: sono consentiti solo Reperibilità notturna e Ambulatorio a pagamento.", "Post-night rest: only night on-call and paid clinic assignments are allowed."),
+    "warning_guard_combination": ("Guardia e altro incarico nella stessa giornata: verificare il carico di lavoro.", "Duty and another assignment on the same date: review the workload."),
+    "error_weekdays_only": ("Attività disponibile solo dal lunedì al venerdì.", "Activity available only Monday to Friday."),
+    "error_time_conflict": ("Medico già impegnato in un incarico incompatibile nella stessa giornata.", "Doctor already assigned to an incompatible duty on the same date."),
     "error_single_doctor": ("Questa cella può contenere un solo medico.", "This slot allows only one doctor."),
     "week_picker_hint": ("Scegli un giorno: verrà aperta la settimana da lunedì a domenica. Se esiste già, sarà caricata.",
                          "Choose a date to open its Monday–Sunday week. An existing week will be loaded."),
@@ -168,6 +171,9 @@ TEXT = {
     "attendance_note": ("Ogni data vale una presenza, anche con più incarichi. S.N. indica le prime ore lavorate dopo la notte precedente.", "Each date counts once, even with multiple assignments. Night-off represents hours worked after the preceding night."),
     "on_call_night": ("Reperibilità notturna", "Night on-call"),
     "error_recovery_night_off": ("Recupero incompatibile con lo smonto notte, anche derivato dalla notte precedente.", "Compensatory leave cannot coincide with post-night rest, including the preceding night's duty."),
+    "warning_night_off_exception": ("Incarico consentito nel giorno di S.N.: verificare il carico di lavoro.", "Allowed assignment on the post-night rest day: review the workload."),
+    "night_off_paid_only": ("Solo a pagamento dopo S.N.", "Paid only after night duty"),
+    "recovery_total_note": ("Numero di incarichi Recupero nell’anno selezionato, inclusi quelli pianificati e fuori dalla settimana visualizzata. Ogni incarico conta una volta; non è un totale di ore.", "Number of time-off-in-lieu assignments in the selected year, including planned dates and dates outside the displayed week. Each assignment counts once; this is not an hours total."),
     "paid_clinic": ("Ambulatori a pagamento", "Paid clinics"),
     "paid_nights": ("Notti a pagamento", "Paid nights"),
     "paid_clinic_note": ("Incarichi di ambulatorio a pagamento nell’anno, inclusi sabati e domeniche. Mattina e pomeriggio contano separatamente.", "Paid clinic assignments in the year, including weekends. Morning and afternoon count separately."),
@@ -184,7 +190,7 @@ TEXT = {
     "month": ("Mese", "Month"),
     "year": ("Anno", "Year"),
     "monthly_note": ("Numero di incarichi. Guardia, reperibilità e ambulatorio: solo lunedì–venerdì. Sabato e domenica: solo guardie. Le notti sono attribuite al giorno di inizio.", "Assignment counts. Duty, on-call and clinic: Monday–Friday only. Weekends: duty only. Nights count on their starting date."),
-    "festive_note": ("Festività: una presenza per persona e giorno, incluso lo smonto notte; escluse assenze, Multidisciplinare e reperibilità notturna. Attività a pagamento: conteggio dei singoli incarichi.", "Holidays: one attendance per person per day, including night-off; excludes leave, Multidisciplinary and night on-call. Paid activities: individual assignment counts."),
+    "festive_note": ("Festività: una presenza per persona e giorno, incluso lo smonto notte; escluse assenze, Multidisciplinare e reperibilità notturna. Attività a pagamento e Recuperi: conteggio dei singoli incarichi nell’anno.", "Holidays: one attendance per person per day, including night-off; excludes leave, Multidisciplinary and night on-call. Paid activities and time off in lieu: individual assignment counts for the year."),
     "surgery_urgent": ("CHIR 1", "SURG 1"),
     "surgery_2": ("CHIR 2", "SURG 2"),
     "surgery_3": ("CHIR 3", "SURG 3"),

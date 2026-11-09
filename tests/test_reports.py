@@ -1,3 +1,4 @@
+import pytest
 from datetime import date, timedelta
 from turniamo.domain import Activity as A, Assignment, Doctor, effective_assignments, issues_for_week, minutes_for
 from turniamo.reports import period_reports, easter, holiday_dates
@@ -32,8 +33,8 @@ def test_festivities_deduplicate_exclude_nonwork_and_count_paid():
         data += [assignment(day,a,'b') for a in [A.NIGHT_OFF,A.HOLIDAY,A.ABSENCE,A.RECOVERY,A.MULTIDISCIPLINARY]]
     data += [assignment(date(2025,12,25),A.DAY_DUTY),assignment(date(2026,12,24),A.NIGHT_DUTY,'b')]
     result=period_reports(date(2026,11,1),effective_assignments(data),[Doctor('a','Alpha'),Doctor('b','Beta')])
-    assert result['festivities'][0]['counts']=={'festive':7,'special':6,'paid_clinic':13,'paid_nights':0}
-    assert result['festivities'][1]['counts']=={'festive':7,'special':6,'paid_clinic':0,'paid_nights':0}
+    assert result['festivities'][0]['counts']=={'festive':7,'special':6,'paid_clinic':13,'paid_nights':0,'recovery_total':0}
+    assert result['festivities'][1]['counts']=={'festive':7,'special':6,'paid_clinic':0,'paid_nights':0,'recovery_total':13}
     regular,special=holiday_dates(2038)
     assert date(2038,4,25) in special and not regular & special
 
@@ -70,7 +71,10 @@ def test_new_activities_survive_reopen_and_import(tmp_path):
 def test_period_tabs_and_month_switch(app):
     store=Store(':memory:');d=store.save_doctor('Demo');store.set_setting('last_week','2026-11-02')
     for day in (date(2026,4,25),date(2026,11,6)):
-        store.save_assignment(Assignment(str(day),day,A.SURGERY_3,d))
+        # Preserve historical weekend work in reports without permitting new work.
+        store.create_week(day)
+        with store.db:
+            store.db.execute("INSERT INTO assignments VALUES(?,?,?,?,?,?,?)", (str(day),day.isoformat(),A.SURGERY_3.value,d,0,'',''))
     window=MainWindow(store);window.show();wait_js(window,'window.turniamoReady === true')
     js(window,"document.querySelector('[data-tab=monthly]').click()")
     wait_js(window,"document.querySelector('.report-table') !== null")
@@ -79,7 +83,7 @@ def test_period_tabs_and_month_switch(app):
     wait_js(window,"state.reports.month==='2026-04'")
     assert js(window,"document.querySelector('.report-table tbody tr').children[3].textContent")=='1'
     js(window,"document.querySelector('[data-tab=festivities]').click()")
-    wait_js(window,"document.querySelectorAll('.report-table thead th').length===5")
+    wait_js(window,"document.querySelectorAll('.report-table thead th').length===6")
     assert js(window,"document.querySelector('.report-table tbody tr').children[1].textContent")=='1'
     js(window,"document.querySelector('[data-tab=schedule]').click()")
     assert not js(window,"document.querySelector('.week-controls').hidden")
@@ -94,11 +98,14 @@ def test_night_warning_in_picker_and_excel(app):
     store=Store(':memory:');doctor=store.save_doctor('Demo');store.create_week(monday)
     store.save_assignment(Assignment('night',monday,A.NIGHT_DUTY,doctor))
     for offset,activity in [(1,A.CLINIC_AM),(1,A.CLINIC_PM),(2,A.CLINIC_AM)]:
-        store.save_assignment(Assignment(str(offset)+activity,monday+timedelta(days=offset),activity,doctor))
+        # Historical incompatible entries must remain visible in exports.
+        with store.db:
+            store.db.execute("INSERT INTO assignments VALUES(?,?,?,?,?,?,?)", (str(offset)+activity,(monday+timedelta(days=offset)).isoformat(),activity.value,doctor,0,'',''))
     bridge=Bridge(store);bridge.start=monday
     assert bridge.choices(monday+timedelta(days=1),A.SURGERY_3)[0]['disabled']
     assert not bridge.choices(monday+timedelta(days=1),A.SURGERY_3)[0]['warning']
-    assert bridge.choices(monday+timedelta(days=1),A.NIGHT_DUTY)[0]['warning']
+    assert bridge.choices(monday+timedelta(days=1),A.NIGHT_DUTY)[0]['disabled']
+    assert not bridge.choices(monday+timedelta(days=1),A.NIGHT_DUTY)[0]['warning']
     assert bridge.choices(monday+timedelta(days=1),A.CLINIC_PM)[0]['warning']
     assert not bridge.choices(monday+timedelta(days=2),A.CLINIC_AM)[0]['warning']
     col=next(i for i,(key,_) in enumerate(COLUMNS,1) if key=='clinic_group')
@@ -118,13 +125,13 @@ def test_holiday_overnight_cross_year_deduplicates_and_explains():
          assignment(date(2026,12,25),A.NIGHT_DUTY)]
     result=period_reports(date(2026,1,1),raw,[Doctor('a','Demo'),Doctor('b','Empty')])
     row=result['festivities'][0]
-    assert row['counts']=={'festive':1,'special':2,'paid_clinic':0,'paid_nights':0}
+    assert row['counts']=={'festive':1,'special':2,'paid_clinic':0,'paid_nights':0,'recovery_total':0}
     newyear=row['details']['special'][0]
     assert newyear['date']=='2026-01-01' and newyear['holiday']=='new_year'
     assert {a['activity'] for a in newyear['assignments']}=={'night_off','day_duty'}
     assert len(newyear['assignments'])==2
     assert row['details']['festive'][0]['date']=='2026-12-26'
-    assert result['festivities'][1]['details']=={'festive':[],'special':[],'paid_clinic':[],'paid_nights':[]}
+    assert result['festivities'][1]['details']=={'festive':[],'special':[],'paid_clinic':[],'paid_nights':[],'recovery_total':[]}
     assert len(result['holiday_catalog']['festive'])==7
     assert len(result['holiday_catalog']['special'])==6
 
@@ -139,7 +146,7 @@ def test_report_info_and_reset_to_schedule_period(app):
     js(window,"const month=document.querySelector('input[type=month]');month.value='2025-04';month.dispatchEvent(new Event('change'))")
     wait_js(window,"state.reports.month==='2025-04'")
     js(window,"document.querySelector('[data-tab=festivities]').click()")
-    wait_js(window,"document.querySelectorAll('.report-table thead .info-button').length===4")
+    wait_js(window,"document.querySelectorAll('.report-table thead .info-button').length===5")
     assert js(window,"state.reports.year")==2026
     js(window,"document.querySelector('thead .info-button[data-category=special]').click()")
     assert js(window,"document.querySelectorAll('#dialog tbody tr').length")==6
@@ -192,6 +199,7 @@ def test_night_on_call_warns_next_morning_without_hours_or_counts(app):
     report=period_reports(date(2026,11,1),raw,store.doctors())
     assert not any(report['monthly'][0]['counts'].values())
     assert not any(report['festivities'][0]['counts'].values())
+    store.create_week(monday)
     bridge=Bridge(store);bridge.start=monday
     assert bridge.choices(monday,A.CLINIC_AM)[0]['warning']
     assert not bridge.choices(monday,A.CLINIC_PM)[0]['warning']
@@ -247,8 +255,8 @@ def test_export_includes_reports_outside_displayed_week(app,tmp_path,monkeypatch
     book=load_workbook(path)
     assert book['Turni mensili']['H3'].value==1
     assert [book['Riepilogo annuale'].cell(3,col).value for col in range(2,6)]==[1,0,1,1]
-    assert '20:00 - 08:00' in book['Calendario']['H7'].value
-    assert 'Demo' in book['Calendario']['H7'].value
+    assert '20:00 - 08:00' in book['Calendario']['H6'].value
+    assert 'Demo' in book['Calendario']['H6'].value
     store.close()
 
 
@@ -264,4 +272,48 @@ def test_night_duty_and_oncall_have_distinct_rest_windows():
             assert not rest_warning(monday,'b',activity,periods)
             assert not rest_warning(monday+timedelta(days=1),'a',activity,periods)
     both=[assignment(monday,A.NIGHT_OFF),assignment(monday-timedelta(days=1),A.ON_CALL_NIGHT)]
-    assert rest_warning(monday,'a',A.CLINIC_PM,rest_periods(both))=='warning_after_night_off'
+    assert rest_warning(monday,'a',A.CLINIC_PM,rest_periods(both))=='error_night_off_unavailable'
+
+
+def test_annual_recoveries_include_whole_year_and_former_doctors():
+    raw=[assignment(date(2025,12,31),A.RECOVERY),assignment(date(2026,1,1),A.RECOVERY),
+         assignment(date(2026,12,31),A.RECOVERY),assignment(date(2027,1,1),A.RECOVERY),
+         assignment(date(2026,5,2),A.RECOVERY,'former'),assignment(date(2026,6,2),A.HOLIDAY)]
+    doctors=[Doctor('a','Alpha'),Doctor('former','Former',False),Doctor('empty','Empty')]
+    report=period_reports(date(2026,11,1),raw,doctors)
+    assert 'recovery_total' in report['annual_columns']
+    assert [row['counts']['recovery_total'] for row in report['festivities']]==[2,1,0]
+    assert [d['date'] for d in report['festivities'][0]['details']['recovery_total']]==['2026-01-01','2026-12-31']
+    assert all(row['counts']['festive']==row['counts']['special']==0 for row in report['festivities'])
+
+
+@pytest.mark.parametrize('language',['it','en'])
+def test_annual_recoveries_ui_details_and_exports(app,tmp_path,language):
+    from openpyxl import load_workbook
+    from turniamo.exports import export_excel,document_html,export_pdf
+    from turniamo.i18n import tr
+    from PySide6.QtPdf import QPdfDocument
+    store=Store(':memory:');doctor=store.save_doctor('Demo')
+    store.create_week(date(2026,11,2));store.set_setting('last_week','2026-11-02');store.set_setting('language',language)
+    for day in (date(2026,1,3),date(2026,12,30)):
+        store.save_assignment(Assignment(str(day),day,A.RECOVERY,doctor))
+    window=MainWindow(store);window.show();wait_js(window,'window.turniamoReady===true')
+    js(window,"document.querySelector('[data-tab=festivities]').click()")
+    wait_js(window,"document.querySelector('.report-table')!==null")
+    assert js(window,"document.querySelector('.report-table tbody tr').lastElementChild.querySelector('.amount').textContent")=='2'
+    js(window,"document.querySelector('.report-table tbody [data-category=recovery_total]').click()")
+    assert js(window,"document.querySelector('.breakdown-total strong').textContent")=='2'
+    assert js(window,"document.querySelector('.breakdown').textContent.includes('30/12/2026')")
+    js(window,"document.querySelector('#dialog').close()")
+    report=window.bridge.state()['reports']
+    path=tmp_path/'recoveries.xlsx'
+    export_excel(path,window.bridge.start,store.week_context(window.bridge.start),store.week_doctors(window.bridge.start),language,reports=report)
+    book=load_workbook(path);sheet=book[tr('festivities',language)]
+    assert sheet['F2'].value==tr('recovery_total',language) and sheet['F3'].value==2
+    book.close()
+    pdf_path=tmp_path/'recoveries.pdf'
+    export_pdf(pdf_path,document_html(window.bridge.start,store.week_context(window.bridge.start),store.week_doctors(window.bridge.start),language,reports=report))
+    pdf=QPdfDocument();assert pdf.load(str(pdf_path))==QPdfDocument.Error.None_
+    text=''.join(pdf.getAllText(i).text() for i in range(pdf.pageCount()))
+    assert ''.join(tr('recovery_total',language).split()) in ''.join(text.split())
+    pdf.close();window.close();store.close()

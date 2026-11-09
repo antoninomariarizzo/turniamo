@@ -3,11 +3,11 @@ from datetime import timedelta
 from pathlib import Path
 import json
 
-from .domain import Activity, issues_for_week, minutes_for
+from .domain import activity_day_error, hidden_activities, Activity, issues_for_week, minutes_for
 from .i18n import day_label, tr, week_label
 from .layout import COLUMNS, TIMES
 from .presentation import presentation_data
-from .reports import period_reports
+from .reports import ANNUAL_COLUMNS, period_reports
 
 
 def visible_doctors(doctors, assignments, start):
@@ -38,6 +38,7 @@ def export_cells(start, assignments, doctors, language):
         day, row = start + timedelta(days=n), n * 6
         cells.append((row, 0, day_label(day, language), 6, False))
         for col, (key, activities) in enumerate(COLUMNS, start=1):
+            activities = tuple(a for a in activities if a not in hidden_activities(day))
             slots = len(activities) if key in ("duty_group", "on_call_group", "clinic_group") else 1
             span = 6 // slots
             for half in range(slots):
@@ -141,6 +142,8 @@ def export_excel(path, start, assignments, doctors, language, reports=None):
     schedule.append([t("day")] + [t(k) for k, _ in COLUMNS])
     for row, col, text, span, warning in export_cells(start, assignments, doctors, language):
         cell = schedule.cell(row+3, col+1, text)
+        if col and all(activity_day_error(start + timedelta(days=row // 6), a) for a in COLUMNS[col-1][1]):
+            cell.fill = PatternFill("solid", fgColor="EEF0F3")
         if warning:
             cell.fill = PatternFill("solid", fgColor="FFF0D7")
         if span > 1:
@@ -188,7 +191,7 @@ def export_excel(path, start, assignments, doctors, language, reports=None):
     summary.print_title_rows = "1:4"
     for sheet, label, rows, columns, period in (
         (monthly, 'monthly', reports['monthly'], reports['columns'], reports['month']),
-        (annual, 'festivities', reports['festivities'], ['festive','special','paid_clinic','paid_nights'], str(reports['year']))):
+        (annual, 'festivities', reports['festivities'], ANNUAL_COLUMNS, str(reports['year']))):
         sheet.append([t(label) + ' · ' + period])
         sheet.merge_cells(start_row=1,start_column=1,end_row=1,end_column=len(columns)+1)
         sheet.append([t('report_person')] + [t(key) for key in columns])

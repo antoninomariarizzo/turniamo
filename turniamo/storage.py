@@ -7,7 +7,7 @@ import sqlite3
 from uuid import uuid4
 
 from .domain import (Activity, Assignment, Doctor, RuleError, effective_assignments,
-                     monday, normalize_name, validate_assignment, SINGLE_DOCTOR_ACTIVITIES)
+                     monday, normalize_name, selection_assignment, validate_assignment, SINGLE_DOCTOR_ACTIVITIES)
 
 
 class Store:
@@ -203,7 +203,7 @@ class Store:
             for doctor_id in doctor_ids:
                 if any(a.doctor_id == doctor_id for a in retained):
                     continue
-                a = Assignment(str(uuid4()), day, activity, doctor_id)
+                a = selection_assignment(str(uuid4()), day, activity, doctor_id, working)
                 validate_assignment(a, working)
                 working.append(a)
                 changes.append(a)

@@ -27,8 +27,22 @@ class Activity(StrEnum):
     RECOVERY = "recovery"
 
 
+# Displayed clock intervals and overlap checks share one source. Credited minutes
+# remain separate in minutes_for; overnight ends are relative to the start date.
+ACTIVITY_INTERVALS = {
+    Activity.SURGERY_URGENT: (465, 900), Activity.SURGERY_2: (465, 900),
+    Activity.SURGERY_3: (465, 900), Activity.WARD: (465, 1020),
+    Activity.WEEK_SERVICE: (465, 840), Activity.DAY_DUTY: (465, 1230),
+    Activity.NIGHT_DUTY: (1185, 1950), Activity.ON_CALL_AM: (465, 840),
+    Activity.ON_CALL_PM: (840, 1080), Activity.ON_CALL_NIGHT: (1200, 1920),
+    Activity.CLINIC_AM: (465, 810), Activity.CLINIC_PM: (870, 1140),
+}
+
+
 ACTIVITIES = tuple(Activity)
 SURGERIES = frozenset((Activity.SURGERY_URGENT, Activity.SURGERY_2, Activity.SURGERY_3))
+WEEKDAY_ONLY = SURGERIES | {Activity.WARD, Activity.WEEK_SERVICE}
+DAILY_EXCLUSIVE = WEEKDAY_ONLY | {Activity.DAY_DUTY, Activity.NIGHT_DUTY}
 SINGLE_DOCTOR_ACTIVITIES = frozenset((Activity.WARD, Activity.WEEK_SERVICE))
 ABSENCES = frozenset((Activity.ABSENCE, Activity.HOLIDAY, Activity.RECOVERY))
 WORK = frozenset(ACTIVITIES) - ABSENCES - {Activity.NIGHT_OFF, Activity.MULTIDISCIPLINARY, Activity.ON_CALL_NIGHT}
@@ -172,16 +186,42 @@ def totals_for_week(start: date, assignments: list[Assignment], doctors: list[Do
     return {doctor_id: Total(**values) for doctor_id, values in buckets.items()}
 
 
+def activity_day_error(day: date, activity: Activity) -> str:
+    if activity in WEEKDAY_ONLY and day.weekday() >= 5:
+        return "error_weekdays_only"
+    if activity == Activity.ON_CALL_AM and day.weekday() != 5:
+        return "error_saturday_only"
+    return ""
+
+
+def hidden_activities(day: date):
+    return {Activity.ON_CALL_AM} if day.weekday() != 5 else set()
+
+
+def night_off_exception(activity: Activity, paid: bool = False) -> bool:
+    return activity == Activity.ON_CALL_NIGHT or (activity in {Activity.CLINIC_AM, Activity.CLINIC_PM} and paid)
+
+
+def selection_assignment(assignment_id, day, activity, doctor_id, raw):
+    # The picker explicitly labels clinics during post-night rest as paid only.
+    paid = activity in {Activity.CLINIC_AM, Activity.CLINIC_PM} and any(
+        a.day == day and a.doctor_id == doctor_id and a.activity == Activity.NIGHT_OFF
+        for a in effective_assignments(raw)
+    )
+    return Assignment(assignment_id, day, activity, doctor_id, paid=paid)
+
+
 def validate_assignment(proposal: Assignment, raw: list[Assignment]) -> None:
-    if proposal.activity == Activity.ON_CALL_AM and proposal.day.weekday() != 5:
-        raise RuleError("error_saturday_only")
+    day_error = activity_day_error(proposal.day, proposal.activity)
+    if day_error:
+        raise RuleError(day_error)
     if proposal.paid and proposal.activity in ABSENCES | {Activity.MULTIDISCIPLINARY, Activity.ON_CALL_NIGHT}:
         raise RuleError("error_paid_absence")
     if proposal.associate_role not in ("", "training", "reference"):
         raise RuleError("error_associate")
     if bool(proposal.associate_role) != bool(proposal.associate_name.strip()):
         raise RuleError("error_associate")
-    others = [a for a in effective_assignments(raw) if a.id != proposal.id]
+    others = [a for a in effective_assignments(raw) if a.id != proposal.id and a.source_id != proposal.id]
     if proposal.activity in SINGLE_DOCTOR_ACTIVITIES and any(
         a.day == proposal.day and a.activity == proposal.activity for a in others
     ):
@@ -197,6 +237,15 @@ def validate_assignment(proposal: Assignment, raw: list[Assignment]) -> None:
         raise RuleError("error_recovery_night_off")
     if proposal.activity == Activity.NIGHT_DUTY and any(a.doctor_id == proposal.doctor_id and a.day == proposal.day + timedelta(days=1) and a.activity == Activity.RECOVERY for a in others):
         raise RuleError("error_recovery_night_off")
+    if proposal.activity in AVAILABILITY_REQUIRED and not night_off_exception(proposal.activity, proposal.paid) and any(a.activity == Activity.NIGHT_OFF for a in same):
+        raise RuleError("error_night_off_unavailable")
+    if proposal.activity == Activity.NIGHT_OFF and any(a.activity in AVAILABILITY_REQUIRED and not night_off_exception(a.activity, a.paid) for a in same):
+        raise RuleError("error_night_off_unavailable")
+    if proposal.activity == Activity.NIGHT_DUTY and any(
+        a.doctor_id == proposal.doctor_id and a.day == proposal.day + timedelta(days=1)
+        and a.activity in AVAILABILITY_REQUIRED and not night_off_exception(a.activity, a.paid) for a in others
+    ):
+        raise RuleError("error_night_off_unavailable")
     # Night-off counts a previous night's work. Leave on that calendar day does
     # not introduce a new work assignment and is therefore allowed.
     if proposal.activity in ABSENCES:
@@ -209,18 +258,30 @@ def validate_assignment(proposal: Assignment, raw: list[Assignment]) -> None:
 MORNING_WORK = SURGERIES | {Activity.WARD, Activity.WEEK_SERVICE, Activity.DAY_DUTY, Activity.ON_CALL_AM, Activity.CLINIC_AM}
 
 
-# Scheduling bands are explicit product rules, not parsed display labels.
-# In particular surgery + a PM clinic/on-call remains a valid combination.
-AFTERNOON_WORK = frozenset((Activity.WARD, Activity.DAY_DUTY, Activity.ON_CALL_PM, Activity.CLINIC_PM))
-NIGHT_WORK = frozenset((Activity.NIGHT_DUTY, Activity.ON_CALL_NIGHT))
-
-
 def activities_conflict(first: Activity, second: Activity) -> bool:
     if first == second:
         return False  # Duplicate assignments have a dedicated validation error.
-    return any(first in band and second in band for band in (MORNING_WORK, AFTERNOON_WORK, NIGHT_WORK)) or {
-        first, second
-    } == {Activity.DAY_DUTY, Activity.NIGHT_DUTY}
+    if first in DAILY_EXCLUSIVE and second in DAILY_EXCLUSIVE:
+        return True
+    # These PM duties start after surgery and have dedicated credited durations.
+    if (first in SURGERIES and second in {Activity.CLINIC_PM, Activity.ON_CALL_PM}) or (
+        second in SURGERIES and first in {Activity.CLINIC_PM, Activity.ON_CALL_PM}
+    ):
+        return False
+    left, right = ACTIVITY_INTERVALS.get(first), ACTIVITY_INTERVALS.get(second)
+    return bool(left and right and max(left[0], right[0]) < min(left[1], right[1]))
+
+
+def guard_warning(day, doctor_id, activity, assignments):
+    guards = {Activity.DAY_DUTY, Activity.NIGHT_DUTY}
+    if activity not in AVAILABILITY_REQUIRED:
+        return ""
+    if any(a.day == day and a.doctor_id == doctor_id and a.activity != activity
+           and a.activity in AVAILABILITY_REQUIRED
+           and (activity in guards or a.activity in guards)
+           and not activities_conflict(activity, a.activity) for a in assignments):
+        return "warning_guard_combination"
+    return ""
 
 
 def rest_periods(assignments):
@@ -229,10 +290,10 @@ def rest_periods(assignments):
     return full_days, mornings
 
 
-def rest_warning(day, doctor_id, activity, periods):
+def rest_warning(day, doctor_id, activity, periods, paid=False):
     full_days, mornings = periods
     if (day, doctor_id) in full_days and activity not in ABSENCES | {Activity.NIGHT_OFF}:
-        return "warning_after_night_off"
+        return "warning_night_off_exception" if night_off_exception(activity, paid) else "error_night_off_unavailable"
     if (day, doctor_id) in mornings and activity in MORNING_WORK:
         return "warning_after_on_call_night"
     return ""
@@ -242,11 +303,14 @@ def issues_for_week(start: date, assignments: list[Assignment]) -> list[Issue]:
     issues: set[Issue] = set()
     periods = rest_periods(assignments)
     for a in assignments:
-        warning = rest_warning(a.day, a.doctor_id, a.activity, periods)
+        warning = rest_warning(a.day, a.doctor_id, a.activity, periods, a.paid) or guard_warning(a.day, a.doctor_id, a.activity, assignments)
         if start <= a.day <= start + timedelta(days=6) and warning:
-            issues.add(Issue(warning, a.doctor_id, a.day, activity=a.activity))
+            issues.add(Issue(warning, a.doctor_id, a.day, "error" if warning == "error_night_off_unavailable" else "warning", activity=a.activity))
         if not start <= a.day <= start + timedelta(days=6) or a.activity not in AVAILABILITY_REQUIRED:
             continue
+        day_error = activity_day_error(a.day, a.activity)
+        if day_error:
+            issues.add(Issue(day_error, a.doctor_id, a.day, "error", activity=a.activity))
         same = [b for b in assignments if b.day == a.day and b.doctor_id == a.doctor_id]
         if any(b.activity in ABSENCES for b in same):
             issues.add(Issue("error_unavailable", a.doctor_id, a.day, "error", activity=a.activity))

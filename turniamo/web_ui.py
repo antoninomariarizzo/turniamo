@@ -24,7 +24,7 @@ from .layout import COLUMNS, SUBLABELS, TIMES
 from .storage import Store
 from .presentation import presentation_data
 from .reports import period_reports
-from .domain import effective_assignments, rest_periods, rest_warning
+from .domain import selection_assignment, effective_assignments, rest_periods, rest_warning, guard_warning
 
 
 def default_export_path(filename):
@@ -175,14 +175,16 @@ class Bridge(QObject):
         for doctor in self.store.week_doctors(self.start):
             entry = existing.get(doctor.id)
             error = self.t("error_derived") if entry and entry.source_id else ""
+            proposal = entry or selection_assignment(str(uuid4()), day, activity, doctor.id, validation_raw)
+            requires_paid = not entry and proposal.paid
             if not entry:
                 try:
-                    validate_assignment(Assignment(str(uuid4()), day, activity, doctor.id), validation_raw)
+                    validate_assignment(proposal, validation_raw)
                 except RuleError as exc:
                     error = self.t(exc.key)
-            warning = rest_warning(day, doctor.id, activity, periods)
+            warning = rest_warning(day, doctor.id, activity, periods, proposal.paid) or guard_warning(day, doctor.id, activity, raw)
             result.append({"warning": bool(warning) and not error, "id": doctor.id, "name": doctor.name, "selected": bool(entry),
-                           "assignment": entry.id if entry else None, "disabled": bool(error), "reason": error or (self.t(warning) if warning else "")})
+                           "assignment": entry.id if entry else None, "disabled": bool(error), "requiresPaid": bool(requires_paid), "reason": error or (self.t("night_off_paid_only") if requires_paid else self.t(warning) if warning else "")})
         return result
 
     def dispatch(self, command, args):
@@ -215,7 +217,7 @@ class Bridge(QObject):
             if current:
                 self.store.delete_assignment(current.id)
             else:
-                self.store.save_assignment(Assignment(str(uuid4()), day, activity, args["doctor"]))
+                self.store.save_assignment(selection_assignment(str(uuid4()), day, activity, args["doctor"], self.store.raw_assignments(day - timedelta(days=1), day + timedelta(days=1))))
         elif command == "update_assignment":
             a = self.find_assignment(args["id"])
             self.store.save_assignment(replace(a, paid=bool(args["paid"]), associate_role=args["role"], associate_name=args["name"].strip()))

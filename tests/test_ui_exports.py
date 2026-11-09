@@ -50,6 +50,7 @@ def wait_js(window, expression):
 def test_html_direct_assignment_edit_remove_language_and_compact_layout(app, tmp_path):
     store, first, second = sample_store()
     store.delete_assignment("surgery")
+    store.delete_assignment("night")
     window = MainWindow(store)
     window.show()
     wait_js(window, "window.turniamoReady === true")
@@ -89,6 +90,7 @@ def test_html_direct_assignment_edit_remove_language_and_compact_layout(app, tmp
 def test_multi_selection_cancel_filter_and_keyboard_confirmation(app):
     store, first, second = sample_store()
     store.delete_assignment("surgery")
+    store.delete_assignment("night")
     window=MainWindow(store);window.show()
     wait_js(window,"window.turniamoReady === true")
     def open_menu():
@@ -235,20 +237,25 @@ def test_assignment_dialog_reopens_cancels_and_saves_associate(app, role):
         assert js(window, "getComputedStyle(document.querySelector('#dialog'),'::backdrop').backdropFilter") == 'none'
         assert js(window, "document.querySelector('#popover').hidden")
         assert js(window, "document.querySelector('#associate-name').value") == 'Verdi A.'
-        js(window, f"document.querySelector('#associate-role').value='{role}';document.querySelector('#associate-role').dispatchEvent(new Event('change'))")
+        js(window, f"document.querySelector('#associate-role input[value=\"\"]').click();document.querySelector('#associate-role input[value=\"{role}\"]').click()")
         assert js(window, "document.activeElement.id") == 'associate-name'
         js(window, "document.querySelector('#associate-name').value='Discarded';document.querySelector('#dialog .quiet-button').click()")
         assert not js(window, "document.querySelector('#dialog').open")
     assert next(a for a in store.raw_assignments() if a.id == 'surgery').associate_name == 'Verdi A.'
     js(window, more + '.click()')
-    js(window, f"document.querySelector('#associate-role').value='{role}';document.querySelector('#associate-role').dispatchEvent(new Event('change'));document.querySelector('#associate-name').value='Persona demo';document.querySelector('#dialog .primary').click()")
+    js(window, f"document.querySelector('#associate-role input[value=\"\"]').click();document.querySelector('#associate-role input[value=\"{role}\"]').click();document.querySelector('#associate-name').value='Persona demo';document.querySelector('#dialog .primary').click()")
     wait_js(window, "!document.querySelector('#dialog').open && document.querySelector('[data-activity=surgery_2] .associated').textContent.includes('Persona demo')")
     saved = next(a for a in store.raw_assignments() if a.id == 'surgery')
     assert (saved.associate_role, saved.associate_name) == (role, 'Persona demo')
     js(window, more + '.click()')
-    assert js(window, "document.querySelector('#associate-role').value") == role
+    assert js(window, "document.querySelector('#associate-role input:checked').value") == role
     assert js(window, "document.querySelector('#associate-name').value") == 'Persona demo'
-    js(window, "document.querySelector('#dialog .quiet-button').click()")
+    js(window, "document.querySelector('#associate-role input[value=\"\"]').click()")
+    assert js(window, "document.querySelector('#associate-name').disabled")
+    js(window, "document.querySelector('#dialog .primary').click()")
+    wait_js(window, "!document.querySelector('#dialog').open")
+    cleared=next(a for a in store.raw_assignments() if a.id=='surgery')
+    assert cleared.associate_role==cleared.associate_name==''
     window.close()
     store.close()
 
@@ -314,6 +321,7 @@ def test_historical_overlap_picker_calendar_and_excel(app):
 def test_single_doctor_picker_replaces_only_on_confirmation(app, activity):
     store, first, second = sample_store()
     store.delete_assignment("surgery")
+    store.delete_assignment("night")
     store.delete_assignment("clinic")
     window=MainWindow(store);window.show()
     wait_js(window,'window.turniamoReady===true')
@@ -396,8 +404,10 @@ def test_ward_hours_shared_by_ui_pdf_and_excel(app,tmp_path,with_service,expecte
 ])
 def test_all_overlapping_pairs_disabled_and_bulk_replacement_atomic(app,band):
     from itertools import permutations
-    day=MONDAY+timedelta(days=5)
     for first,second in permutations(band,2):
+        if A.ON_CALL_AM in (first,second) and any(a in (A.SURGERY_URGENT,A.SURGERY_2,A.SURGERY_3,A.WARD,A.WEEK_SERVICE) for a in (first,second)):
+            continue
+        day=MONDAY+timedelta(days=5) if A.ON_CALL_AM in (first,second) else MONDAY
         store=Store(':memory:')
         a,b=store.save_doctor('Alpha'),store.save_doctor('Beta')
         store.create_week(MONDAY);store.set_setting('last_week',MONDAY.isoformat())
@@ -414,3 +424,71 @@ def test_all_overlapping_pairs_disabled_and_bulk_replacement_atomic(app,band):
         store.set_slot_doctors(day,second,[a])
         assert [x.doctor_id for x in store.raw_assignments()]==[a]
         store.close()
+
+
+@pytest.mark.parametrize('core',[A.SURGERY_URGENT,A.SURGERY_2,A.SURGERY_3,A.WARD,A.WEEK_SERVICE])
+@pytest.mark.parametrize('guard',[A.DAY_DUTY,A.NIGHT_DUTY])
+def test_guard_is_exclusive_with_core_for_the_entire_day(app,core,guard):
+    for first,second in ((core,guard),(guard,core)):
+        store=Store(':memory:');doctor=store.save_doctor('Demo')
+        store.create_week(MONDAY);store.set_setting('last_week',MONDAY.isoformat())
+        store.set_slot_doctors(MONDAY,first,[doctor])
+        before=store.raw_assignments()
+        choice=Bridge(store).choices(MONDAY,second)[0]
+        assert choice['disabled'] and not choice['warning']
+        with pytest.raises(RuleError,match='error_time_conflict'):
+            store.save_assignment(Assignment('conflict',MONDAY,second,doctor))
+        with pytest.raises(RuleError,match='error_time_conflict'):
+            store.set_slot_doctors(MONDAY,second,[doctor])
+        assert store.raw_assignments()==before
+        store.set_slot_doctors(MONDAY,first,[])
+        assert not Bridge(store).choices(MONDAY,second)[0]['disabled']
+        store.close()
+
+
+@pytest.mark.parametrize('activity',[A.SURGERY_2,A.NIGHT_DUTY,A.NIGHT_OFF])
+@pytest.mark.parametrize('language',['it','en'])
+def test_delete_shift_from_details_keeps_other_assignments(app,activity,language):
+    store=Store(':memory:');first,second=store.save_doctor('Alpha'),store.save_doctor('Beta')
+    store.create_week(MONDAY);store.set_setting('last_week',MONDAY.isoformat());store.set_setting('language',language)
+    store.save_assignment(Assignment('target',MONDAY,activity,first,True,'reference','Persona demo'))
+    other=Assignment('other',MONDAY,A.CLINIC_AM,second)
+    store.save_assignment(other)
+    window=MainWindow(store);window.show();wait_js(window,'window.turniamoReady===true')
+    if activity==A.NIGHT_DUTY:
+        js(window,"document.querySelector('[data-activity=night_off] .more').click()")
+        assert js(window,"document.querySelector('#dialog').open")
+        assert not js(window,"document.querySelector('#dialog .delete-assignment')!==null")
+        js(window,"document.querySelector('#dialog').close()")
+    js(window,f"document.querySelector('[data-activity={activity}] .more').click()")
+    assert js(window,"document.querySelector('.delete-assignment').textContent")==('Elimina turno' if language=='it' else 'Delete shift')
+    js(window,"document.querySelector('#dialog .quiet-button').click()")
+    assert len(store.raw_assignments())==2
+    js(window,f"document.querySelector('[data-activity={activity}] .more').click()")
+    js(window,"document.querySelector('.delete-assignment').click()")
+    wait_js(window,"!document.querySelector('#dialog').open && document.querySelectorAll('.assignment').length===1")
+    assert store.raw_assignments()==[other]
+    assert not any(a.doctor_id==first for a in store.week_context(MONDAY))
+    window.close();store.close()
+
+
+@pytest.mark.parametrize('activity',[A.CLINIC_AM,A.CLINIC_PM])
+@pytest.mark.parametrize('manual',[False,True])
+def test_post_night_clinic_picker_saves_paid_and_warns(app,activity,manual):
+    store=Store(':memory:');doctor=store.save_doctor('Demo')
+    store.create_week(MONDAY);store.set_setting('last_week',MONDAY.isoformat())
+    store.save_assignment(Assignment('origin',MONDAY if manual else MONDAY-timedelta(days=1),A.NIGHT_OFF if manual else A.NIGHT_DUTY,doctor))
+    window=MainWindow(store);window.show();wait_js(window,'window.turniamoReady===true')
+    js(window,f"document.querySelector('[data-activity={activity}]').click()")
+    wait_js(window,"!document.querySelector('#popover').hidden && document.querySelector('.choice')!==null")
+    assert not js(window,"document.querySelector('.choice').disabled")
+    assert js(window,"document.querySelector('.choice').classList.contains('warning')")
+    assert js(window,"document.querySelector('.paid-only').textContent")=='Solo a pagamento dopo S.N.'
+    js(window,"document.querySelector('.choice').click();document.querySelector('.selection-confirm').click()")
+    wait_js(window,f"document.querySelector('[data-activity={activity}] .assignment.paid.warning')!==null")
+    saved=next(a for a in store.raw_assignments() if a.activity==activity)
+    assert saved.paid
+    with pytest.raises(RuleError,match='error_night_off_unavailable'):
+        window.bridge.dispatch('update_assignment',{'id':saved.id,'paid':False,'role':'','name':''})
+    assert next(a for a in store.raw_assignments() if a.id==saved.id).paid
+    window.close();store.close()

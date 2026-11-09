@@ -72,3 +72,62 @@ def test_summary_only_over_40_and_info_reconciles_signed_and_paid_minutes(app):
     assert js(window,"document.querySelector('.breakdown tbody').rows.length")==2
     assert js(window,"document.querySelector('.breakdown-total strong').textContent")=='13h00m'
     window.close()
+
+
+def test_weekend_cells_oncall_geometry_and_clinic_label_match_excel(app,tmp_path):
+    from turniamo.exports import export_excel,export_cells
+    from turniamo.layout import COLUMNS
+    from turniamo.domain import RuleError
+    from openpyxl import load_workbook
+    import pytest
+    store=Store(':memory:');doctor=store.save_doctor('Demo')
+    store.create_week(MONDAY);store.set_setting('last_week',MONDAY.isoformat())
+    window=MainWindow(store);window.show();wait_js(window,'window.turniamoReady === true')
+    assert js(window,"document.querySelectorAll('[data-activity=on_call_am]').length")==1
+    assert js(window,"document.querySelector('[data-activity=on_call_am]').dataset.day")==str(MONDAY+timedelta(days=5))
+    assert js(window,"document.querySelector('[data-activity=clinic_pm] .slot-label').textContent")=='14:30 - 19:00'
+    core=(A.SURGERY_URGENT,A.SURGERY_2,A.SURGERY_3,A.WARD,A.WEEK_SERVICE)
+    for activity in core:
+        assert js(window,f"document.querySelectorAll('[data-activity={activity}][aria-disabled=true]').length")==2
+        selector=f'[data-day="{MONDAY+timedelta(days=5)}"][data-activity="{activity}"]'
+        js(window,f"document.querySelector('{selector}').click()")
+        assert js(window,"document.querySelector('#popover').hidden")
+        with pytest.raises(RuleError,match='error_weekdays_only'):
+            store.set_slot_doctors(MONDAY+timedelta(days=5),activity,[doctor])
+    cells=export_cells(MONDAY,[],store.week_doctors(MONDAY),'it')
+    col=next(i for i,(key,_) in enumerate(COLUMNS,1) if key=='on_call_group')
+    for day in range(7):
+        slots=[c for c in cells if c[1]==col and day*6<=c[0]<(day+1)*6]
+        assert len(slots)==(3 if day==5 else 2)
+        assert sum(c[3] for c in slots)==6
+        assert any('07:45 - 14:00' in c[2] for c in slots)==(day==5)
+    path=tmp_path/'weekend.xlsx';export_excel(path,MONDAY,[],store.week_doctors(MONDAY),'it')
+    workbook=load_workbook(path)
+    for row in (33,39):
+        for column in range(2,7):
+            assert workbook['Calendario'].cell(row,column).fill.fgColor.rgb=='00EEF0F3'
+    assert workbook['Calendario']['I6'].value=='14:30 - 19:00'
+    workbook.close();window.close();store.close()
+
+
+def test_guard_yellow_and_night_rest_grey_in_picker(app):
+    store=Store(':memory:');doctor=store.save_doctor('Demo')
+    store.create_week(MONDAY);store.set_setting('last_week',MONDAY.isoformat())
+    store.save_assignment(Assignment('night',MONDAY,A.NIGHT_DUTY,doctor))
+    window=MainWindow(store);window.show();wait_js(window,'window.turniamoReady === true')
+    js(window,"document.querySelector('[data-activity=clinic_pm]').click()")
+    wait_js(window,"!document.querySelector('#popover').hidden && document.querySelector('.choice')!==null")
+    assert js(window,"document.querySelector('.choice').classList.contains('warning')")
+    assert not js(window,"document.querySelector('.choice').disabled")
+    js(window,"document.querySelector('.selection-cancel').click()")
+    next_day=MONDAY+timedelta(days=1)
+    js(window,f"document.querySelector('[data-day=\"{next_day}\"][data-activity=on_call_pm]').click()")
+    wait_js(window,"!document.querySelector('#popover').hidden")
+    assert js(window,"document.querySelector('.choice').disabled")
+    assert not js(window,"document.querySelector('.choice').classList.contains('warning')")
+    assert js(window,"getComputedStyle(document.querySelector('.choice')).color")=='rgb(133, 139, 147)'
+    js(window,"document.querySelector('.selection-cancel').click()")
+    store.save_assignment(Assignment('clinic',MONDAY,A.CLINIC_PM,doctor));window.bridge.publish()
+    wait_js(window,"document.querySelectorAll('.assignment.warning').length===2")
+    assert not js(window,"document.querySelector('[data-activity=night_off] .assignment').classList.contains('warning')")
+    window.close();store.close()

@@ -1,5 +1,5 @@
 """Shared compact timetable geometry for the HTML UI and exports."""
-from .domain import Activity as A
+from .domain import Activity as A, ACTIVITY_INTERVALS
 
 # Each column has vertically stacked slots, rather than extra activity columns.
 COLUMNS = (
@@ -24,12 +24,9 @@ SUBLABELS = {
     A.CLINIC_AM: "morning", A.CLINIC_PM: "afternoon",
 }
 
-TIMES = {
-    A.SURGERY_URGENT: "07:45 - 15:00", A.SURGERY_2: "07:45 - 15:00",
-    A.SURGERY_3: "07:45 - 15:00",
-    A.WARD: "07:45 - 17:00", A.WEEK_SERVICE: "07:45 - 14:00",
-    A.DAY_DUTY: "07:45 - 20:30", A.NIGHT_DUTY: "19:45 - 08:30",
-    A.ON_CALL_AM: "07:45 - 14:00", A.ON_CALL_PM: "14:00 - 18:00",
-    A.ON_CALL_NIGHT: "20:00 - 08:00",
-    A.CLINIC_AM: "07:45 - 13:30", A.CLINIC_PM: "15:00 - 19:00",
-}
+def clock_label(minutes):
+    return f"{minutes // 60 % 24:02d}:{minutes % 60:02d}"
+
+
+TIMES = {activity: f"{clock_label(start)} - {clock_label(end)}"
+         for activity, (start, end) in ACTIVITY_INTERVALS.items()}

@@ -1,12 +1,14 @@
 ## Italiano
 
-### Correzioni
+### Correzioni e novità
 
-- **Reparto e ACC-W.S.** accettano un solo medico per cella. Rimossa l’opzione Aiuto reparto.
-- **Ore Reparto:** 8h se nello stesso giorno è assegnato un medico ad ACC-W.S., altrimenti 9h. ACC-W.S. vale 6h30m.
-- **Un incarico per fascia:** bloccate le sovrapposizioni tra sale, Reparto, ACC-W.S., Guardia, Ambulatorio e Reperibilità. Guardia diurna e notturna restano incompatibili nella stessa data. Restano consentite sala al mattino + Ambulatorio/Reperibilità pomeridiana.
-- **Selettori uniformi:** i medici incompatibili restano visibili, grigi e non selezionabili, con il motivo del blocco. Il controllo vale anche per salvataggi singoli e multipli, in entrambi gli ordini di inserimento.
-- README e immagine dimostrativa aggiornati. I conflitti già presenti nell’archivio sono segnalati senza cancellare automaticamente gli incarichi.
+- **Smonto notte:** nel giorno di S.N. sono consentiti Reperibilità notturna e Ambulatorio AM/PM a pagamento, evidenziati in giallo. Gli altri incarichi restano bloccati. Il selettore indica quando l’ambulatorio deve essere pagato; il controllo vale anche per smonto manuale e in entrambi gli ordini di inserimento.
+- **Recuperi annuali:** nuova colonna nel Riepilogo annuale con il numero di incarichi Recupero per persona nell’intero anno e il dettaglio delle date. Inclusa in PDF ed Excel.
+- **Esclusività giornaliera:** una sola attività per medico tra CHIR 1/2/3, Reparto, ACC-W.S. e Guardia diurna/notturna, indipendentemente dall’orario. Guardia con Ambulatorio/Reperibilità resta consentita solo senza sovrapposizioni, con avviso giallo.
+- **Fine settimana:** CHIR 1/2/3, Reparto e ACC-W.S. sono disabilitati sabato e domenica. Reperibilità mattutina compare solo il sabato, anche negli export.
+- **Ambulatorio PM:** label anticipata alle 14:30; ore invariate, 4h dopo sala e 4h30m altrimenti.
+- **Dettagli turno:** selezione della persona associata tramite tre opzioni visibili, eliminando la dipendenza dal popup nativo problematico su Windows. Aggiunto il pulsante Elimina turno; lo smonto automatico si rimuove dalla notte di origine.
+- README bilingue e immagine dimostrativa aggiornati. I dati storici incompatibili restano conservati e segnalati.
 
 ### Download e aggiornamento
 
@@ -19,13 +21,15 @@ I pacchetti non hanno firma di distribuzione né notarizzazione. Per requisiti d
 
 ## English
 
-### Fixes
+### Fixes and additions
 
-- **Ward and ACC-W.S.** allow one doctor per slot. Removed the Ward help option.
-- **Ward hours:** 8h when a doctor is assigned to ACC-W.S. on the same day, otherwise 9h. ACC-W.S. counts as 6h30m.
-- **One duty per time band:** overlapping assignments across operating rooms, Ward, ACC-W.S., duty, clinic and on-call are blocked. Day and night duty remain incompatible on the same date. Morning surgery + PM clinic/on-call remain allowed.
-- **Consistent pickers:** incompatible doctors remain visible, grey and disabled, with the reason for the conflict. Single and bulk saves enforce the same rules in either insertion order.
-- Updated README and demo image. Existing conflicts in the archive are flagged without automatically deleting assignments.
+- **Post-night rest:** Night on-call and paid AM/PM clinics are allowed on the post-night day, highlighted in yellow. Other duties remain blocked. The picker indicates when a clinic must be paid; validation also covers manual post-night entries and either insertion order.
+- **Annual time off in lieu:** new Annual summary column counts each person’s recovery assignments across the whole year, with date details. Included in PDF and Excel exports.
+- **Daily exclusivity:** one assignment per doctor among SURG 1/2/3, Ward, ACC-W.S. and Day/Night duty, regardless of time. Duty combined with clinic/on-call remains allowed only without overlapping times, with a yellow warning.
+- **Weekends:** SURG 1/2/3, Ward and ACC-W.S. are disabled on Saturdays and Sundays. Morning on-call appears only on Saturdays, including in exports.
+- **PM clinic:** displayed start changed to 14:30; credited hours remain 4h after surgery and 4h30m otherwise.
+- **Shift details:** three visible associated-person options replace the native popup that was problematic on Windows. Added Delete shift; automatic post-night entries are removed through their originating night.
+- Updated bilingual README and demo image. Incompatible historical data is preserved and flagged.
 
 ### Downloads and updating
 

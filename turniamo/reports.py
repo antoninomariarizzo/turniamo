@@ -7,6 +7,8 @@ MONTH_COLUMNS = ('surgery_urgent', 'surgery_2', 'surgery_3', 'day_duty', 'night_
                  'sunday_day', 'sunday_night')
 
 
+ANNUAL_COLUMNS = ('festive', 'special', 'paid_clinic', 'paid_nights', 'recovery_total')
+
 def easter(year):
     """Gregorian Easter, Meeus/Jones/Butcher algorithm."""
     a = year % 19
@@ -49,7 +51,7 @@ def period_reports(month, assignments, doctors):
     monthly = {d.id: dict.fromkeys(MONTH_COLUMNS, 0) for d in doctors}
     catalog = holiday_catalog(month.year)
     names = {item['date']: item['holiday'] for items in catalog.values() for item in items}
-    paid = {d.id: {'paid_clinic': [], 'paid_nights': []} for d in doctors}
+    annual = {d.id: {'paid_clinic': [], 'paid_nights': [], 'recovery_total': []} for d in doctors}
     festive = {d.id: {'festive': {}, 'special': {}} for d in doctors}
     for a in effective_assignments(assignments):
         if a.doctor_id not in monthly:
@@ -57,7 +59,9 @@ def period_reports(month, assignments, doctors):
         if a.day.year == month.year and a.paid:
             category = 'paid_clinic' if a.activity in (A.CLINIC_AM, A.CLINIC_PM) else 'paid_nights' if a.activity == A.NIGHT_DUTY else None
             if category:
-                paid[a.doctor_id][category].append({'date': a.day.isoformat(), 'holiday': '', 'assignments': [{'activity': a.activity.value, 'paid': True}]})
+                annual[a.doctor_id][category].append({'date': a.day.isoformat(), 'holiday': '', 'assignments': [{'activity': a.activity.value, 'paid': True}]})
+        if a.day.year == month.year and a.activity == A.RECOVERY:
+            annual[a.doctor_id]['recovery_total'].append({'date': a.day.isoformat(), 'holiday': '', 'assignments': [{'activity': a.activity.value, 'paid': a.paid}]})
         if a.day.year == month.year and a.activity in WORK | {A.NIGHT_OFF}:
             group = 'special' if a.day in special else 'festive' if a.day in regular else None
             if group:
@@ -78,8 +82,8 @@ def period_reports(month, assignments, doctors):
             category = ('saturday_' if a.day.weekday() == 5 else 'sunday_') + ('day' if a.activity == A.DAY_DUTY else 'night')
         if category:
             monthly[a.doctor_id][category] += 1
-    return {'month': month.strftime('%Y-%m'), 'year': month.year, 'columns': MONTH_COLUMNS, 'holiday_catalog': catalog,
+    return {'month': month.strftime('%Y-%m'), 'year': month.year, 'columns': MONTH_COLUMNS, 'annual_columns': ANNUAL_COLUMNS, 'holiday_catalog': catalog,
             'monthly': [{'id': d.id, 'name': d.name, 'counts': monthly[d.id]} for d in doctors],
-            'festivities': [{'id': d.id, 'name': d.name, 'counts': {k: len(v) for k,v in (festive[d.id] | paid[d.id]).items()},
+            'festivities': [{'id': d.id, 'name': d.name, 'counts': {k: len(v) for k,v in (festive[d.id] | annual[d.id]).items()},
                              'details': {k: [{'date': day.isoformat(), 'holiday': names[day.isoformat()], 'assignments': entries}
-                                             for day, entries in sorted(v.items())] for k,v in festive[d.id].items()} | paid[d.id]} for d in doctors]}
+                                             for day, entries in sorted(v.items())] for k,v in festive[d.id].items()} | annual[d.id]} for d in doctors]}

@@ -57,7 +57,7 @@ def test_exclusive_assignments(first, second):
     with pytest.raises(RuleError, match="error_.*_conflict"):
         validate_assignment(entry(second), [existing])
     validate_assignment(entry(second, doctor="b"), [existing])
-    validate_assignment(entry(second, day=MONDAY+timedelta(days=1)), [existing])
+    validate_assignment(entry(second, day=MONDAY+timedelta(days=2)), [existing])
     assert any(i.severity == "error" for i in issues_for_week(MONDAY, [existing, entry(second)]))
 
 
@@ -94,7 +94,7 @@ def test_night_warning_is_on_night_off_morning_and_trainee_is_ignored():
     work_after_sn = entry(A.SURGERY_2, day=MONDAY + timedelta(days=2))
     trainee = entry(A.CLINIC_PM, day=MONDAY + timedelta(days=2), doctor="b", associate_role="training", associate_name="Alpha")
     issues = issues_for_week(MONDAY, effective_assignments([night, work_sn, work_after_sn, trainee]))
-    assert {(i.key, i.day, i.doctor_id) for i in issues} == {("warning_after_night_off", MONDAY + timedelta(days=1), "a")}
+    assert {(i.key, i.day, i.doctor_id) for i in issues} == {("error_night_off_unavailable", MONDAY + timedelta(days=1), "a")}
     assert {i.activity for i in issues} == {A.CLINIC_AM}
 
 
@@ -185,8 +185,10 @@ def test_historical_conflicts_flag_only_involved_activities():
 ])
 def test_each_band_is_exclusive_in_both_orders(band):
     from itertools import permutations
-    day=MONDAY+timedelta(days=5)  # Morning on-call is available on Saturday.
     for first,second in permutations(band,2):
+        if A.ON_CALL_AM in (first,second) and any(a in (A.SURGERY_URGENT,A.SURGERY_2,A.SURGERY_3,A.WARD,A.WEEK_SERVICE) for a in (first,second)):
+            continue
+        day=MONDAY+timedelta(days=5) if A.ON_CALL_AM in (first,second) else MONDAY
         for paid in (False,True):
             existing=entry(first,day=day,paid=paid)
             with pytest.raises(RuleError,match='error_time_conflict'):
@@ -198,9 +200,113 @@ def test_each_band_is_exclusive_in_both_orders(band):
 @pytest.mark.parametrize("first,second", [
     (A.SURGERY_2,A.CLINIC_PM),(A.SURGERY_2,A.ON_CALL_PM),
     (A.WEEK_SERVICE,A.CLINIC_PM),(A.CLINIC_AM,A.ON_CALL_PM),
-    (A.WARD,A.NIGHT_DUTY),(A.CLINIC_PM,A.NIGHT_DUTY),
+    (A.CLINIC_PM,A.NIGHT_DUTY),
     (A.CLINIC_PM,A.ON_CALL_NIGHT),(A.SURGERY_2,A.MULTIDISCIPLINARY),
 ])
 def test_distinct_bands_remain_available(first,second):
     validate_assignment(entry(first),[entry(second)])
     validate_assignment(entry(second),[entry(first)])
+
+
+@pytest.mark.parametrize('activity', [A.SURGERY_URGENT,A.SURGERY_2,A.SURGERY_3,A.WARD,A.WEEK_SERVICE])
+@pytest.mark.parametrize('offset', [5,6])
+def test_weekend_core_duties_are_blocked(activity,offset):
+    with pytest.raises(RuleError,match='error_weekdays_only'):
+        validate_assignment(entry(activity,day=MONDAY+timedelta(days=offset)),[])
+    validate_assignment(entry(activity),[])
+
+
+@pytest.mark.parametrize('activity', [A.SURGERY_URGENT,A.SURGERY_2,A.SURGERY_3,A.WARD,A.WEEK_SERVICE,
+                                    A.DAY_DUTY,A.NIGHT_DUTY,A.CLINIC_AM,A.CLINIC_PM,A.ON_CALL_PM,
+                                    A.MULTIDISCIPLINARY])
+@pytest.mark.parametrize('rest_day', [MONDAY,date(2027,1,1)])
+def test_night_rest_blocks_all_work_in_both_orders_across_boundaries(activity,rest_day):
+    work=entry(activity,day=rest_day)
+    night=entry(A.NIGHT_DUTY,day=rest_day-timedelta(days=1))
+    manual=entry(A.NIGHT_OFF,day=rest_day)
+    for origin in (night,manual):
+        with pytest.raises(RuleError,match='error_night_off_unavailable'):
+            validate_assignment(work,[origin])
+        with pytest.raises(RuleError,match='error_night_off_unavailable'):
+            validate_assignment(origin,[work])
+        validate_assignment(entry(A.CLINIC_PM,day=rest_day+timedelta(days=1)),[origin])
+        validate_assignment(entry(activity,day=rest_day,doctor='b'),[origin])
+        for absence in (A.HOLIDAY,A.ABSENCE):
+            validate_assignment(entry(absence,day=rest_day),[origin])
+
+
+def test_night_rest_blocks_saturday_on_call_and_editing_night_keeps_own_rest_out_of_validation():
+    from dataclasses import replace
+    friday=MONDAY+timedelta(days=4)
+    night=entry(A.NIGHT_DUTY,day=friday)
+    with pytest.raises(RuleError,match='error_night_off_unavailable'):
+        validate_assignment(entry(A.ON_CALL_AM,day=friday+timedelta(days=1)),[night])
+    validate_assignment(replace(night,paid=True),[night])
+    validate_assignment(replace(night,day=friday+timedelta(days=1)),[night])
+
+
+@pytest.mark.parametrize('activity', [A.CLINIC_AM,A.CLINIC_PM,A.ON_CALL_PM])
+def test_night_guard_with_nonoverlapping_work_warns_both_entries(activity):
+    from turniamo.domain import guard_warning
+    night,work=entry(A.NIGHT_DUTY),entry(activity)
+    validate_assignment(night,[work]);validate_assignment(work,[night])
+    assert guard_warning(MONDAY,'a',activity,[night])=='warning_guard_combination'
+    assert guard_warning(MONDAY,'a',A.NIGHT_DUTY,[work])=='warning_guard_combination'
+    assert {i.activity for i in issues_for_week(MONDAY,[night,work]) if i.key=='warning_guard_combination'}=={activity,A.NIGHT_DUTY}
+
+
+@pytest.mark.parametrize('first,second', [(A.DAY_DUTY,A.CLINIC_PM),(A.DAY_DUTY,A.ON_CALL_PM),
+    (A.DAY_DUTY,A.ON_CALL_NIGHT),(A.NIGHT_DUTY,A.ON_CALL_NIGHT),(A.CLINIC_PM,A.ON_CALL_PM)])
+def test_real_clock_overlaps_remain_blocked(first,second):
+    for a,b in ((first,second),(second,first)):
+        with pytest.raises(RuleError,match='error_time_conflict'):
+            validate_assignment(entry(a),[entry(b)])
+
+
+@pytest.mark.parametrize('first,second', [(A.CLINIC_AM,A.ON_CALL_PM),(A.CLINIC_AM,A.ON_CALL_NIGHT),
+    (A.CLINIC_PM,A.ON_CALL_NIGHT),(A.ON_CALL_AM,A.CLINIC_PM)])
+def test_clinic_and_oncall_allow_nonoverlapping_intervals(first,second):
+    day=MONDAY+timedelta(days=5)
+    validate_assignment(entry(first,day=day),[entry(second,day=day)])
+    validate_assignment(entry(second,day=day),[entry(first,day=day)])
+
+
+@pytest.mark.parametrize('surgery', [A.SURGERY_URGENT,A.SURGERY_2,A.SURGERY_3])
+def test_clinic_label_changes_without_changing_after_surgery_credit(surgery):
+    from turniamo.layout import TIMES
+    clinic=entry(A.CLINIC_PM);operation=entry(surgery)
+    assert TIMES[A.CLINIC_PM]=='14:30 - 19:00'
+    validate_assignment(clinic,[operation]);validate_assignment(operation,[clinic])
+    assert minutes_for(clinic,[clinic,operation])==240
+    assert minutes_for(clinic,[clinic])==270
+
+
+@pytest.mark.parametrize('activity',[A.DAY_DUTY,A.NIGHT_DUTY])
+@pytest.mark.parametrize('offset',[5,6])
+def test_guard_remains_available_on_weekends(activity,offset):
+    validate_assignment(entry(activity,day=MONDAY+timedelta(days=offset)),[])
+
+
+@pytest.mark.parametrize('activity,paid',[(A.ON_CALL_NIGHT,False),(A.CLINIC_AM,True),(A.CLINIC_PM,True)])
+@pytest.mark.parametrize('rest_day',[MONDAY,date(2027,1,1)])
+def test_post_night_exceptions_allowed_and_yellow_in_both_orders(activity,paid,rest_day):
+    from dataclasses import replace
+    work=entry(activity,day=rest_day,paid=paid)
+    for origin in (entry(A.NIGHT_DUTY,day=rest_day-timedelta(days=1)),entry(A.NIGHT_OFF,day=rest_day)):
+        validate_assignment(work,[origin]);validate_assignment(origin,[work])
+        context=effective_assignments([origin,work])
+        issues=issues_for_week(rest_day,context)
+        assert any(i.key=='warning_night_off_exception' and i.activity==activity and i.severity=='warning' for i in issues)
+        assert not any(i.activity==A.NIGHT_OFF for i in issues)
+        if paid:
+            with pytest.raises(RuleError,match='error_night_off_unavailable'):
+                validate_assignment(replace(work,paid=False),context)
+        assert minutes_for(work,context)==(0 if activity==A.ON_CALL_NIGHT else 360 if activity==A.CLINIC_AM else 270)
+
+
+def test_post_night_exception_does_not_override_absences_or_overlap():
+    raw=[entry(A.NIGHT_OFF),entry(A.ABSENCE)]
+    with pytest.raises(RuleError,match='error_unavailable'):
+        validate_assignment(entry(A.CLINIC_PM,paid=True),raw)
+    with pytest.raises(RuleError,match='error_unavailable'):
+        validate_assignment(entry(A.ON_CALL_NIGHT),raw)

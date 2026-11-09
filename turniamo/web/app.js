@@ -58,13 +58,13 @@ function renderSchedule() {
     const row=el('tr',day.weekday>=5?'weekend':'');row.append(el('th','',day.label));
     for(const col of state.columns) {
       const td=el('td'), cell=el('div','cell');
-      const activities=col.activities;
+      const activities=col.activities.filter(activity=>!day.hiddenActivities.includes(activity));
       for(const activity of activities) {
         const slot=el('div','slot');slot.tabIndex=0;slot.setAttribute('role','button');
         slot.dataset.day=day.date;slot.dataset.activity=activity;
         slot.setAttribute('aria-label',`${day.label} · ${t(col.key)} ${state.sublabels[activity]||''}`);
         if(state.sublabels[activity])slot.append(el('span','slot-label',state.sublabels[activity]));
-        const disabled=activity==='on_call_am'&&day.weekday!==5;
+        const disabled=day.disabledActivities.includes(activity);
         if(disabled){slot.setAttribute('aria-disabled','true');slot.tabIndex=-1;}
         const entries=state.assignments.filter(a=>a.day===day.date&&a.activity===activity);
         const collator=new Intl.Collator(state.language,{sensitivity:'base',numeric:true});
@@ -116,7 +116,7 @@ async function doctorMenu(anchor,day,activity) {
     list.replaceChildren();
     for(const d of choices.filter(d=>d.name.toLocaleLowerCase().includes(search.value.toLocaleLowerCase()))) {
       const b=el('button','choice'+(d.warning?' warning':''));b.dataset.doctor=d.id;b.setAttribute('aria-pressed',String(selected.has(d.id)));b.disabled=d.disabled||saving;b.title=d.reason;
-      const mark=el('span','checkmark');if(selected.has(d.id))mark.append(icon('check'));b.append(mark,el('span','',d.name));
+      const mark=el('span','checkmark');if(selected.has(d.id))mark.append(icon('check'));b.append(mark,el('span','',d.name));if(d.requiresPaid)b.append(el('small','paid-only',t('night_off_paid_only')));
       b.onclick=()=>{
         if(selected.has(d.id))selected.delete(d.id);else {if(state.singleDoctorActivities.includes(activity))selected.clear();selected.add(d.id);}
         for(const choice of list.querySelectorAll('.choice')) {
@@ -193,7 +193,7 @@ function renderPeriodReport(kind=tab) {
   input.min=monthly?'1900-01':'1900';input.max=monthly?'9999-12':'9999';input.setAttribute('aria-label',label.textContent);
   input.onchange=()=>{if(!input.value||!input.checkValidity())return;const [year,month]=monthly?input.value.split('-'):[input.value,report.month.split('-')[1]];run('report_period',{year:Number(year),month:Number(month)});};
   label.append(input);controls.append(el('h2','',t(kind)),label);page.append(controls,el('p','report-note',t(monthly?'monthly_note':'festive_note')));
-  const columns=monthly?report.columns:['festive','special','paid_clinic','paid_nights'],rows=monthly?report.monthly:report.festivities;
+  const columns=monthly?report.columns:report.annual_columns,rows=monthly?report.monthly:report.festivities;
   const table=el('table','summary report-table'),head=el('thead'),hr=el('tr');hr.append(el('th','',t('report_person')));
   for(const key of columns){const th=el('th','',t(key));if(!monthly)th.append(reportInfo(t(key),key,()=>holidayDialog(key)));hr.append(th);}head.append(hr);table.append(head);
   const body=el('tbody');for(const row of rows){const tr=el('tr');tr.dataset.doctor=row.id;tr.append(el('th','',row.name));for(const key of columns){const td=el('td');td.append(el('span','amount',row.counts[key]));if(!monthly)td.append(reportInfo(row.name+' · '+t(key),key,()=>holidayDialog(key,row)));tr.append(td);}body.append(tr);}table.append(body);page.append(table);$('#main').append(page);
@@ -204,7 +204,7 @@ function reportInfo(label,key,callback) {
 }
 function holidayDialog(key,row=null) {
   const d=dialogBase((row?row.name+' · ':'')+t(key)+' · '+state.reports.year);d.classList.add('calculation-dialog');
-  const paid=key.startsWith('paid_');const entries=row?row.details[key]:(state.reports.holiday_catalog[key]||[]);if(paid)d.append(el('p','report-note',t(key+'_note')));
+  const paid=key.startsWith('paid_')||key==='recovery_total';const entries=row?row.details[key]:(state.reports.holiday_catalog[key]||[]);if(paid)d.append(el('p','report-note',t(key+'_note')));
   const table=el('table','breakdown'),head=el('thead'),header=el('tr');
   for(const label of [t('date'),...(!paid?[t('festive')]:[]),...(row?[t('activity')]:[])])header.append(el('th','',label));head.append(header);table.append(head);
   const body=el('tbody');for(const entry of entries){const tr=el('tr');const [year,month,day]=entry.date.split('-');tr.append(el('td','',day+'/'+month+'/'+year));if(!paid)tr.append(el('td','',t(entry.holiday)));if(row)tr.append(el('td','',entry.assignments.map(a=>t(a.activity)+(a.paid?' · '+t('paid'):'')).join('; ')));body.append(tr);}table.append(body);if(row||!paid)d.append(table);
@@ -239,11 +239,18 @@ function assignmentDialog(a,doctor) {
   const paid=el('button','switch');paid.setAttribute('role','switch');paid.setAttribute('aria-label',t('paid'));paid.setAttribute('aria-checked',String(a.paid));
   paid.disabled=['absence','holiday','recovery','multidisciplinary','on_call_night'].includes(a.activity);
   paid.onclick=()=>paid.setAttribute('aria-checked',String(paid.getAttribute('aria-checked')!=='true'));paidRow.append(paid);d.append(paidRow);
-  const role=el('select');role.id='associate-role';for(const key of ['', 'training','reference']){const o=el('option','',t(key||'none'));o.value=key;role.append(o);}role.value=a.associate_role;
-  const roleLabel=el('label','',t('associate'));roleLabel.htmlFor=role.id;d.append(roleLabel,role);
-  const name=el('input');name.type='text';name.id='associate-name';name.value=a.associate_name;name.maxLength=80;name.disabled=!role.value;
-  const nameLabel=el('label','',t('associate_name'));nameLabel.htmlFor=name.id;d.append(nameLabel,name);role.onchange=()=>{name.disabled=!role.value;if(role.value)name.focus();};
-  actions(d,async()=>{try{await rpc('update_assignment',{id:a.id,paid:paid.getAttribute('aria-checked')==='true',role:role.value,name:role.value?name.value:''});d.close();}catch(_){}});
+  const role=el('fieldset','associate-options');role.id='associate-role';role.append(el('legend','',t('associate')));
+  const name=el('input');name.type='text';name.id='associate-name';name.value=a.associate_name;name.maxLength=80;name.disabled=!a.associate_role;
+  for(const key of ['', 'training','reference']) {
+    const label=el('label'),choice=el('input');choice.type='radio';choice.name='associate-role';choice.value=key;choice.checked=a.associate_role===key;
+    choice.onchange=()=>{name.disabled=!key;if(key)name.focus();};label.append(choice,document.createTextNode(t(key||'none')));role.append(label);
+  }
+  d.append(role);
+  const nameLabel=el('label','',t('associate_name'));nameLabel.htmlFor=name.id;d.append(nameLabel,name);
+  actions(d,async()=>{try{await rpc('update_assignment',{id:a.id,paid:paid.getAttribute('aria-checked')==='true',role:role.querySelector('input:checked').value,name:role.querySelector('input:checked').value?name.value:''});d.close();}catch(_){}});
+  const remove=el('button','delete-assignment',t('delete_assignment'));remove.type='button';
+  remove.onclick=async()=>{remove.disabled=true;try{await rpc('delete_assignment',{id:a.id});d.close();}catch(_){remove.disabled=false;}};
+  d.querySelector('.actions').prepend(remove);
   d.showModal();
 }
 function settingsMenu(anchor) {
