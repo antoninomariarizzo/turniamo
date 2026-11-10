@@ -1,6 +1,6 @@
 # turniamo — memoria del progetto e istruzioni per gli agenti
 
-Questo file conserva la storia operativa e le decisioni di prodotto della chat iniziale, fino alla pubblicazione della v0.1.8 del 9 novembre 2026. Non è una trascrizione verbatim: conserva richieste, correzioni, motivazioni, risultati e vincoli necessari per continuare in una nuova chat. Le istruzioni successive dell’utente prevalgono; non ripristinare regole storiche superate.
+Questo file conserva la storia operativa e le decisioni di prodotto della chat iniziale, fino alla pubblicazione della v0.1.9 del 10 novembre 2026. Non è una trascrizione verbatim: conserva richieste, correzioni, motivazioni, risultati e vincoli necessari per continuare in una nuova chat. Le istruzioni successive dell’utente prevalgono; non ripristinare regole storiche superate.
 
 ## Identità, repository e collaborazione
 
@@ -233,6 +233,6 @@ Il 9 novembre 2026 l’utente ha autorizzato push e release della correzione del
 
 Calendario: etichetta Ferie/Corsi (Leave/Courses), identificatore persistente holiday e credito 380 minuti invariati. Recupero ora vale zero minuti come Assenza, senza sottrarre ore già lavorate; colonne, vincoli di disponibilità e conteggio annuale dei recuperi restano separati/invariati. Turni mensili: info accanto a ogni contatore, anche zero, con date, attività e pagamento; dettagli e conteggi derivano dagli stessi incarichi Python sull’intero mese. Test locali: 243 superati, inclusi UI bilingue, periodi fuori settimana ed export. Build e smoke macOS riusciti; pacchetto `dist/turniamo-v0.1.8-macOS-recovery-test.zip`. Nessuna nuova release autorizzata.
 
-## Release v0.1.9 autorizzata
+## Release v0.1.9 pubblicata
 
-Il 10 novembre 2026 l’utente ha autorizzato la pubblicazione delle correzioni Ferie/Corsi, dettagli mensili e Recupero a zero ore. Versione 0.1.9; 243 test locali, build e smoke macOS già superati sugli stessi sorgenti applicativi. Verifiche remote e pubblicazione in corso.
+Il 10 novembre 2026 l’utente ha autorizzato la pubblicazione delle correzioni Ferie/Corsi, dettagli mensili e Recupero a zero ore. Commit/tag `bb80ba5` / `v0.1.9`. Workflow https://github.com/antoninomariarizzo/turniamo/actions/runs/42874932310 riuscito: test, build e smoke Windows/macOS superati (243 test anche nella suite locale). Release https://github.com/antoninomariarizzo/turniamo/releases/tag/v0.1.9 pubblica, stabile e latest alla verifica; entrambi i pacchetti, checksum e licenza presenti. Download latest Windows/macOS HTTP 200 e checksum coerenti con i digest GitHub. Aggiornamento documentale successivo al tag, senza modificarlo.
