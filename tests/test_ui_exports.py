@@ -515,3 +515,24 @@ def test_weekend_afternoon_on_call_zero_in_ui_pdf_and_excel(app, tmp_path):
     assert [row[6] for row in detail.iter_rows(min_row=2, values_only=True)] == [0, 0]
     workbook.close()
     store.close()
+
+
+def test_recovery_zero_hours_shared_by_ui_pdf_excel(app, tmp_path):
+    from turniamo.presentation import presentation_data
+    store = Store(':memory:')
+    doctor = store.save_doctor('Demo')
+    store.create_week(MONDAY)
+    store.save_assignment(Assignment('work', MONDAY, A.SURGERY_2, doctor))
+    store.save_assignment(Assignment('rest', MONDAY+timedelta(days=1), A.RECOVERY, doctor))
+    context, doctors = store.week_context(MONDAY), store.week_doctors(MONDAY)
+    data = presentation_data(MONDAY, context, doctors, 'it')
+    assert data['totals'][doctor]['ordinary'] == '7h00m'
+    assert next(a['minutes'] for a in data['assignments'] if a['id']=='rest') == 0
+    assert '"minutes": -380' not in document_html(MONDAY, context, doctors, 'it')
+    path = tmp_path/'recovery.xlsx'
+    export_excel(path, MONDAY, context, doctors, 'it')
+    book = load_workbook(path)
+    detail = next(sheet for sheet in book if sheet.sheet_state=='hidden')
+    assert [row[6] for row in detail.iter_rows(min_row=2, values_only=True)] == [420, 0]
+    book.close()
+    store.close()

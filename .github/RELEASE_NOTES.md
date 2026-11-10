@@ -2,9 +2,10 @@
 
 ### Correzioni
 
-- La Reperibilità pomeridiana **14:00–18:00 del sabato e della domenica vale 0 ore**, anche per gli incarichi già presenti nell’archivio.
-- Il conteggio dal lunedì al venerdì resta invariato: 4 ore, oppure 3 ore dopo sala.
-- La regola è condivisa dai totali dell’interfaccia e dalle esportazioni PDF ed Excel. README bilingue aggiornato.
+- **Ferie/Corsi:** aggiornata l’etichetta della colonna del calendario; credito invariato a 6h20m.
+- **Turni mensili:** pulsante info accanto a ogni contatore, anche zero, con date, attività e indicazione del pagamento degli incarichi inclusi nell’intero mese.
+- **Recupero: 0 ore**, come Assenza, senza sottrarre ore già lavorate. Le colonne rimangono separate; invariati i vincoli di disponibilità e il conteggio annuale dei recuperi. La regola si applica anche agli incarichi già presenti e ai totali negli export PDF/Excel.
+- Aggiornati testi esplicativi e README italiano/inglese.
 
 ### Download e aggiornamento
 
@@ -19,9 +20,10 @@ I pacchetti non hanno firma di distribuzione né notarizzazione. Per requisiti d
 
 ### Fixes
 
-- **Saturday and Sunday afternoon on-call (14:00–18:00) now credits 0 hours**, including assignments already in the archive.
-- Monday–Friday hours remain unchanged: 4 hours, or 3 hours after surgery.
-- UI totals and PDF/Excel exports share the corrected calculation. Updated bilingual README.
+- **Leave/Courses:** updated calendar column label; the 6h20m credit is unchanged.
+- **Monthly shifts:** an info button beside every count, including zero, lists dates, activities and payment status for assignments included across the whole month.
+- **Time off in lieu: 0 hours**, like Absence, without deducting hours already worked. The columns remain separate; availability rules and annual recovery counts are unchanged. The calculation also applies to existing assignments and PDF/Excel totals.
+- Updated explanatory text and Italian/English README.
 
 ### Downloads and updating
 

@@ -172,7 +172,7 @@ def minutes_for(a: Assignment, assignments: list[Assignment]) -> int:
     if a.activity == Activity.HOLIDAY:
         return 380
     if a.activity == Activity.RECOVERY:
-        return -380
+        return 0
     return 0
 
 

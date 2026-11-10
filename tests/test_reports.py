@@ -20,6 +20,11 @@ def test_month_counts_weekends_boundaries_and_zero_rows():
     counts=result['monthly'][0]['counts']
     assert counts == dict(surgery_urgent=0,surgery_2=0,surgery_3=1,day_duty=1,night_duty=1,on_call_group=1,clinic_group=2,saturday_day=1,saturday_night=1,sunday_day=1,sunday_night=1)
     assert set(result['monthly'][1]['counts'].values()) == {0}
+    for row in result['monthly']:
+        assert all(row['counts'][key] == len(entries) for key, entries in row['details'].items())
+    clinic = result['monthly'][0]['details']['clinic_group']
+    assert [e['date'] for e in clinic] == ['2026-11-06', '2026-11-06']
+    assert [e['assignments'][0]['activity'] for e in clinic] == ['clinic_am', 'clinic_pm']
 
 
 def test_festivities_deduplicate_exclude_nonwork_and_count_paid():
@@ -317,3 +322,27 @@ def test_annual_recoveries_ui_details_and_exports(app,tmp_path,language):
     text=''.join(pdf.getAllText(i).text() for i in range(pdf.pageCount()))
     assert ''.join(tr('recovery_total',language).split()) in ''.join(text.split())
     pdf.close();window.close();store.close()
+
+
+@pytest.mark.parametrize('language,label', [('it','Ferie/Corsi'),('en','Leave/Courses')])
+def test_monthly_count_info_and_calendar_leave_label(app, language, label):
+    store = Store(':memory:')
+    doctor = store.save_doctor('Demo')
+    store.set_setting('language', language)
+    store.set_setting('last_week', '2026-11-23')
+    store.save_assignment(Assignment('clinic', date(2026,11,3), A.CLINIC_PM, doctor, True))
+    window = MainWindow(store)
+    window.show()
+    wait_js(window, 'window.turniamoReady === true')
+    assert js(window, f"document.querySelector('.schedule thead').textContent.includes('{label}')")
+    js(window, "document.querySelector('[data-tab=monthly]').click()")
+    wait_js(window, "document.querySelectorAll('.report-table tbody .info-button').length===11")
+    js(window, "document.querySelector('tbody .info-button[data-category=clinic_group]').click()")
+    assert js(window, "document.querySelector('#dialog tbody').textContent.includes('03/11/2026')")
+    assert js(window, "document.querySelector('#dialog .breakdown-total strong').textContent") == '1'
+    assert js(window, "document.querySelector('#dialog h2').textContent.includes('2026-11')")
+    js(window, "document.querySelector('#dialog .primary').click();document.querySelector('tbody .info-button[data-category=day_duty]').click()")
+    assert js(window, "document.querySelector('#dialog .breakdown-total strong').textContent") == '0'
+    assert js(window, "document.querySelectorAll('#dialog tbody tr').length") == 0
+    window.close()
+    store.close()

@@ -48,7 +48,7 @@ def holiday_catalog(year):
 
 def period_reports(month, assignments, doctors):
     regular, special = holiday_dates(month.year)
-    monthly = {d.id: dict.fromkeys(MONTH_COLUMNS, 0) for d in doctors}
+    monthly = {d.id: {key: [] for key in MONTH_COLUMNS} for d in doctors}
     catalog = holiday_catalog(month.year)
     names = {item['date']: item['holiday'] for items in catalog.values() for item in items}
     annual = {d.id: {'paid_clinic': [], 'paid_nights': [], 'recovery_total': []} for d in doctors}
@@ -81,9 +81,9 @@ def period_reports(month, assignments, doctors):
         elif a.activity in (A.DAY_DUTY, A.NIGHT_DUTY):
             category = ('saturday_' if a.day.weekday() == 5 else 'sunday_') + ('day' if a.activity == A.DAY_DUTY else 'night')
         if category:
-            monthly[a.doctor_id][category] += 1
+            monthly[a.doctor_id][category].append({'date': a.day.isoformat(), 'assignments': [{'activity': a.activity.value, 'paid': a.paid}]})
     return {'month': month.strftime('%Y-%m'), 'year': month.year, 'columns': MONTH_COLUMNS, 'annual_columns': ANNUAL_COLUMNS, 'holiday_catalog': catalog,
-            'monthly': [{'id': d.id, 'name': d.name, 'counts': monthly[d.id]} for d in doctors],
+            'monthly': [{'id': d.id, 'name': d.name, 'counts': {key: len(entries) for key, entries in monthly[d.id].items()}, 'details': monthly[d.id]} for d in doctors],
             'festivities': [{'id': d.id, 'name': d.name, 'counts': {k: len(v) for k,v in (festive[d.id] | annual[d.id]).items()},
                              'details': {k: [{'date': day.isoformat(), 'holiday': names[day.isoformat()], 'assignments': entries}
                                              for day, entries in sorted(v.items())] for k,v in festive[d.id].items()} | annual[d.id]} for d in doctors]}

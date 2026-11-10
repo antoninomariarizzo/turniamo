@@ -20,7 +20,7 @@ def entry(activity, day=MONDAY, doctor="a", paid=False, **kwargs):
     (A.WARD, 540), (A.WEEK_SERVICE, 390),
     (A.DAY_DUTY, 780), (A.NIGHT_DUTY, 390), (A.NIGHT_OFF, 390),
     (A.ON_CALL_AM, 390), (A.ON_CALL_PM, 240), (A.CLINIC_AM, 360),
-    (A.CLINIC_PM, 270), (A.ABSENCE, 0), (A.HOLIDAY, 380), (A.RECOVERY, -380),
+    (A.CLINIC_PM, 270), (A.ABSENCE, 0), (A.HOLIDAY, 380), (A.RECOVERY, 0),
 ])
 def test_base_weights(activity, expected):
     a = entry(activity)
@@ -129,10 +129,10 @@ def test_threshold_boundaries(minutes, status):
 
 
 def test_recovery_is_excluded_from_alarm_and_paid_does_not_help_threshold():
-    total = Total(ordinary=2340, recovery=-380, paid=780)
-    assert total.net == 1960
+    total = Total(ordinary=2340, recovery=0, paid=780)
+    assert total.net == 2340
     assert total.status == "within"
-    assert Total(ordinary=2500, recovery=-380).status == "above"
+    assert Total(ordinary=2500, recovery=0).status == "above"
     assert Total(ordinary=2000, paid=780).status == "below"
 
 
@@ -323,3 +323,10 @@ def test_afternoon_on_call_weekend_zero_hours(offset, paid):
     assert total.paid == (expected if paid else 0)
     surgery = entry(A.SURGERY_2, day=assignment.day)
     assert minutes_for(assignment, [assignment, surgery]) == (0 if offset >= 5 else 180)
+
+
+def test_recovery_preserves_worked_hours():
+    data = [entry(A.SURGERY_2), entry(A.RECOVERY, day=MONDAY+timedelta(days=1))]
+    total = totals_for_week(MONDAY, data, [Doctor('a', 'Alpha')])['a']
+    assert total.net == total.threshold_total == 420
+    assert total.recovery == 0

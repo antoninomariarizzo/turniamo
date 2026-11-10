@@ -196,15 +196,15 @@ function renderPeriodReport(kind=tab) {
   const columns=monthly?report.columns:report.annual_columns,rows=monthly?report.monthly:report.festivities;
   const table=el('table','summary report-table'),head=el('thead'),hr=el('tr');hr.append(el('th','',t('report_person')));
   for(const key of columns){const th=el('th','',t(key));if(!monthly)th.append(reportInfo(t(key),key,()=>holidayDialog(key)));hr.append(th);}head.append(hr);table.append(head);
-  const body=el('tbody');for(const row of rows){const tr=el('tr');tr.dataset.doctor=row.id;tr.append(el('th','',row.name));for(const key of columns){const td=el('td');td.append(el('span','amount',row.counts[key]));if(!monthly)td.append(reportInfo(row.name+' · '+t(key),key,()=>holidayDialog(key,row)));tr.append(td);}body.append(tr);}table.append(body);page.append(table);$('#main').append(page);
+  const body=el('tbody');for(const row of rows){const tr=el('tr');tr.dataset.doctor=row.id;tr.append(el('th','',row.name));for(const key of columns){const td=el('td');td.append(el('span','amount',row.counts[key]));td.append(reportInfo(row.name+' · '+t(key),key,()=>holidayDialog(key,row,monthly)));tr.append(td);}body.append(tr);}table.append(body);page.append(table);$('#main').append(page);
 }
 function reportInfo(label,key,callback) {
   const button=el('button','info-button');button.append(icon('info'));button.title=label;
   button.setAttribute('aria-label',t('calculation')+' · '+label);button.dataset.category=key;button.onclick=callback;return button;
 }
-function holidayDialog(key,row=null) {
-  const d=dialogBase((row?row.name+' · ':'')+t(key)+' · '+state.reports.year);d.classList.add('calculation-dialog');
-  const paid=key.startsWith('paid_')||key==='recovery_total';const entries=row?row.details[key]:(state.reports.holiday_catalog[key]||[]);if(paid)d.append(el('p','report-note',t(key+'_note')));
+function holidayDialog(key,row=null,monthly=false) {
+  const d=dialogBase((row?row.name+' · ':'')+t(key)+' · '+(monthly?state.reports.month:state.reports.year));d.classList.add('calculation-dialog');
+  const paid=monthly||key.startsWith('paid_')||key==='recovery_total';const entries=row?row.details[key]:(state.reports.holiday_catalog[key]||[]);if(paid)d.append(el('p','report-note',t(monthly?'monthly_note':key+'_note')));
   const table=el('table','breakdown'),head=el('thead'),header=el('tr');
   for(const label of [t('date'),...(!paid?[t('festive')]:[]),...(row?[t('activity')]:[])])header.append(el('th','',label));head.append(header);table.append(head);
   const body=el('tbody');for(const entry of entries){const tr=el('tr');const [year,month,day]=entry.date.split('-');tr.append(el('td','',day+'/'+month+'/'+year));if(!paid)tr.append(el('td','',t(entry.holiday)));if(row)tr.append(el('td','',entry.assignments.map(a=>t(a.activity)+(a.paid?' · '+t('paid'):'')).join('; ')));body.append(tr);}table.append(body);if(row||!paid)d.append(table);

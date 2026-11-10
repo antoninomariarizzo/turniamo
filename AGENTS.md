@@ -49,7 +49,7 @@ Python è la fonte delle regole; non duplicarle in JavaScript. Tenere UI, selett
 - Schede: **Calendario** con sola icona accessibile/tooltip, **Ore settimanali**, **Turni mensili**, **Riepilogo annuale**. I vecchi nomi erano Orario settimanale, Riepilogo ore, Riepilogo mensile e Riepilogo festività.
 - Eliminato il pulsante «+ Nuova settimana». La navigazione tra settimane resta disponibile; non rimuovere la relativa logica di archivio.
 - Ingranaggio ed Esporta devono mantenere la posizione anche nei riepiloghi mensili/annuali. La selezione del periodo di un riepilogo è separata da quella della settimana.
-- Colonne: CHIR 1, CHIR 2, CHIR 3, Reparto, ACC-W.S., Guardia, Reperibilità, Ambulatorio, Multidisciplinare, S.N., Assenza, Ferie, Recupero.
+- Colonne: CHIR 1, CHIR 2, CHIR 3, Reparto, ACC-W.S., Guardia, Reperibilità, Ambulatorio, Multidisciplinare, S.N., Assenza, Ferie/Corsi, Recupero.
 - CHIR 1 era CHIR URG: conservato l’identificatore persistente `surgery_urgent`. Rimossi i sottotitoli B3 071 e B3 067. CHIR 3 segue CHIR 2. Multidisciplinare è fra Ambulatorio e S.N.
 - Reperibilità ha tre fasce: **07:45–14:00**, **14:00–18:00**, **20:00–08:00**. La fascia AM rimane selezionabile solo il sabato, secondo la regola preesistente. La notte termina il giorno successivo ma non mostra «(+1)», per coerenza con Guardia notturna.
 - Multidisciplinare e Reperibilità notturna sono informative: zero ore, escluse dai conteggi mensili/annuali, niente pagamento. La reperibilità notturna non genera S.N.
@@ -103,12 +103,12 @@ I calcoli usano minuti interi, non decimali arrotondati. Le etichette delle fasc
 | Reperibilità PM / dopo sala (lun–ven); sabato e domenica | 240 / 180; 0 |
 | Ambulatorio AM | 360 |
 | Ambulatorio PM / dopo sala | 270 / 240 |
-| Ferie | +380 |
-| Recupero | −380 |
+| Ferie/Corsi | +380 |
+| Recupero | 0 |
 | Assenza, Multidisciplinare, Reperibilità notturna | 0 |
 
 - Le combinazioni sala + ambulatorio PM e sala + reperibilità PM valgono rispettivamente 11h e 10h.
-- Le ore ordinarie mostrate includono Ferie e Recupero. La segnalazione oltre 40h usa lavoro ordinario + Ferie, **prima** della sottrazione dei recuperi. Non segnalare in UI i totali sotto 38h.
+- Le ore ordinarie mostrate includono Ferie/Corsi. Recupero e Assenza valgono zero ore e non sottraggono ore già lavorate. La segnalazione oltre 40h usa lavoro ordinario + Ferie/Corsi. Non segnalare in UI i totali sotto 38h.
 - Il pagamento è separato dalle ore ordinarie; lo smonto di una notte a pagamento eredita il pagamento.
 - Referenti e persone in formazione non ricevono ore. Non trasformarli in medici assegnati.
 
@@ -228,3 +228,11 @@ Reperibilità pomeridiana 14:00–18:00 del sabato e della domenica: zero minuti
 ## Release v0.1.8 pubblicata
 
 Il 9 novembre 2026 l’utente ha autorizzato push e release della correzione della reperibilità PM del weekend. Commit/tag `08ac2d5` / `v0.1.8`, note bilingui aggiornate. Workflow https://github.com/antoninomariarizzo/turniamo/actions/runs/42710800824 riuscito: 239 test, build e smoke su Windows e macOS. Release https://github.com/antoninomariarizzo/turniamo/releases/tag/v0.1.8 pubblica, stabile e latest alla verifica. Entrambi i pacchetti, checksum e licenza presenti; download latest HTTP 200 e checksum coerenti con i digest GitHub. AGENTS.md incluso nel push come richiesto. Questo aggiornamento documentale segue il tag senza modificarlo.
+
+## Correzioni locali del 10 novembre 2026
+
+Calendario: etichetta Ferie/Corsi (Leave/Courses), identificatore persistente holiday e credito 380 minuti invariati. Recupero ora vale zero minuti come Assenza, senza sottrarre ore già lavorate; colonne, vincoli di disponibilità e conteggio annuale dei recuperi restano separati/invariati. Turni mensili: info accanto a ogni contatore, anche zero, con date, attività e pagamento; dettagli e conteggi derivano dagli stessi incarichi Python sull’intero mese. Test locali: 243 superati, inclusi UI bilingue, periodi fuori settimana ed export. Build e smoke macOS riusciti; pacchetto `dist/turniamo-v0.1.8-macOS-recovery-test.zip`. Nessuna nuova release autorizzata.
+
+## Release v0.1.9 autorizzata
+
+Il 10 novembre 2026 l’utente ha autorizzato la pubblicazione delle correzioni Ferie/Corsi, dettagli mensili e Recupero a zero ore. Versione 0.1.9; 243 test locali, build e smoke macOS già superati sugli stessi sorgenti applicativi. Verifiche remote e pubblicazione in corso.

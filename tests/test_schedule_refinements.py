@@ -65,8 +65,8 @@ def test_summary_only_over_40_and_info_reconciles_signed_and_paid_minutes(app):
     assert not js(window,"document.querySelector('.summary').textContent.includes('Sotto 38')")
     js(window,f"document.querySelector('.info-button[data-doctor=\"{low}\"][data-category=ordinary]').click()")
     assert js(window,"document.querySelector('#dialog').open")
-    assert js(window,"document.querySelector('.breakdown').textContent.includes('−6h20m')")
-    assert js(window,"document.querySelector('.breakdown-total strong').textContent")=='0h00m'
+    assert js(window,"[...document.querySelectorAll('.breakdown tbody tr')].some(r=>r.textContent.includes('Recupero') && r.textContent.includes('0h00m'))")
+    assert js(window,"document.querySelector('.breakdown-total strong').textContent")=='6h20m'
     js(window,"document.querySelector('#dialog').close()")
     js(window,f"document.querySelector('.info-button[data-doctor=\"{low}\"][data-category=paid]').click()")
     assert js(window,"document.querySelector('.breakdown tbody').rows.length")==2

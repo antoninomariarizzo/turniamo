@@ -241,9 +241,9 @@ backup, esportazioni o dati reali dei medici.
 - **Reparto** e **ACC-W.S.** accettano al massimo un medico per cella. Il medico
   di Reparto riceve 8h se nello stesso giorno è assegnato un medico ad ACC-W.S.,
   altrimenti 9h. Il medico di ACC-W.S. riceve 6h30m. Non è prevista l’opzione Aiuto reparto.
-- Le **ore ordinarie** mostrate comprendono Ferie e Recupero. L’avviso oltre 40h
-  considera lavoro ordinario e Ferie prima di sottrarre i recuperi. L’interfaccia
-  non segnala i totali inferiori a 38h.
+- Le **ore ordinarie** mostrate comprendono Ferie/Corsi. Recupero e Assenza valgono
+  0h: non sottraggono ore già lavorate. L’avviso oltre 40h considera lavoro ordinario
+  e Ferie/Corsi. L’interfaccia non segnala i totali inferiori a 38h.
 - Le **ore a pagamento** sono separate dalle ordinarie. Lo smonto di una guardia
   notturna a pagamento eredita il pagamento della notte.
 - **Multidisciplinare e Reperibilità notturna** sono informative: zero ore, nessun
@@ -265,7 +265,8 @@ backup, esportazioni o dati reali dei medici.
   diurna/notturna, Reperibilità e Ambulatorio contano dal lunedì al venerdì;
   le colonne Sabato/Domenica giorno/notte contano soltanto le guardie.
   Ogni fascia AM o PM conta separatamente, anche a pagamento. Le notti contano
-  nella data di inizio, senza ricontare lo smonto.
+  nella data di inizio, senza ricontare lo smonto. Il pulsante info accanto a ogni
+  contatore mostra date e incarichi inclusi, anche per i totali zero.
 - **Festività annuali:** 25 aprile, 1 maggio, 2 giugno, 4 ottobre, 1 novembre,
   8 dicembre e 26 dicembre. Le **festività speciali** sono Capodanno, Epifania,
   Pasqua, Pasquetta, Ferragosto e Natale. Pasqua è calcolata per l’anno selezionato;
@@ -310,8 +311,8 @@ esatti anche quando i totali in ore sono visualizzati con due decimali.
 | Ambulatorio pomeriggio | 4h30m; 4h dopo sala |
 | Multidisciplinare | 0h |
 | Assenza | 0h |
-| Ferie | +6h20m |
-| Recupero | −6h20m |
+| Ferie/Corsi | +6h20m |
+| Recupero | 0h |
 
 6h20m corrispondono a 380 minuti. Sala + Ambulatorio PM valgono complessivamente
 11h; Sala + Reperibilità PM valgono 10h. Una Guardia notturna con il relativo S.N.
@@ -635,9 +636,9 @@ exports or real doctor data.
 - **Ward** and **ACC-W.S.** each allow at most one doctor per slot. The Ward doctor
   receives 8h when a doctor is assigned to ACC-W.S. on the same day, otherwise 9h.
   The ACC-W.S. doctor receives 6h30m. The Ward help option is no longer available.
-- Displayed **ordinary hours** include Annual leave and Time off in lieu. The warning
-  above 40h considers ordinary work and Annual leave before subtracting time off
-  in lieu. The interface does not flag totals below 38h.
+- Displayed **ordinary hours** include Leave/Courses. Time off in lieu and Absence
+  credit 0h without deducting hours already worked. The warning above 40h considers
+  ordinary work and Leave/Courses. The interface does not flag totals below 38h.
 - **Paid hours** are separate from ordinary hours. The post-night entry of a paid
   night duty inherits the night’s payment status.
 - **Multidisciplinary and Night on-call** are informational: zero hours, no payment
@@ -649,6 +650,9 @@ exports or real doctor data.
   below apply. Calculations use whole minutes without intermediate rounding.
 
 #### Monthly and annual summaries
+
+- Each Monthly shifts count has an info button showing included dates and assignments,
+  including zero totals.
 
 - When opening a summary, the initial month or year is that of the **Monday of the
   displayed week**, rather than the computer’s current date. The period selector
@@ -705,8 +709,8 @@ exact minutes even when hour totals are displayed with two decimal places.
 | Afternoon outpatient clinic | 4h30m; 4h after surgery |
 | Multidisciplinary | 0h |
 | Absence | 0h |
-| Annual leave | +6h20m |
-| Time off in lieu | −6h20m |
+| Leave/Courses | +6h20m |
+| Time off in lieu | 0h |
 
 6h20m equals 380 minutes. Surgery + afternoon outpatient clinic totals 11h;
 surgery + afternoon on-call totals 10h. Night duty with its post-night entry

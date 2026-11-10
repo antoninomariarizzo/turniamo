@@ -24,7 +24,7 @@ TEXT = {
     "no_results": ("Nessun medico disponibile", "No available doctors"),
     "ward_lead": ("Responsabile", "Lead"),
     "assignment_note": ("Dettagli turno", "Shift details"),
-    "ordinary_tooltip": ("Ordinarie + ferie − recuperi. Si segnala solo il superamento di 40h, valutato prima della sottrazione dei recuperi.", "Ordinary work + annual leave − time off in lieu. Only totals above 40h are flagged, before deducting time off in lieu."),
+    "ordinary_tooltip": ("Ordinarie + ferie/corsi. Recupero e Assenza valgono 0h. Si segnala solo il superamento di 40h.", "Ordinary work + leave/courses. Time off in lieu and Absence credit 0h. Only totals above 40h are flagged."),
     "paid_hours": ("Ore a pagamento", "Paid hours"),
     "confirm": ("Conferma", "Confirm"),
     "normal": ("—", "—"),
@@ -99,8 +99,8 @@ TEXT = {
     "below": ("Sotto 38h", "Below 38h"),
     "above": ("Oltre 40h", "Above 40h"),
     "within": ("Nella fascia", "In range"),
-    "summary_hint": ("Soglia 38–40h = ordinarie + ferie. Il recupero (−6h20m) riduce il netto, senza generare l’allarme. Le ore a pagamento sono separate.",
-                     "38–40h threshold = ordinary hours + annual leave. Time off in lieu (−6h20m) reduces the net total without causing an alarm. Paid hours are separate."),
+    "summary_hint": ("Soglia 38–40h = ordinarie + ferie/corsi. Recupero e Assenza valgono 0h e non sottraggono ore già lavorate. Le ore a pagamento sono separate.",
+                     "38–40h threshold = ordinary hours + leave/courses. Time off in lieu and Absence credit 0h without deducting hours already worked. Paid hours are separate."),
     "details": ("Dettaglio del medico selezionato", "Selected doctor's breakdown"),
     "issues": ("Segnalazioni", "Warnings"),
     "no_issues": ("Nessuna segnalazione sulle assegnazioni.", "No assignment warnings."),
@@ -113,19 +113,19 @@ TEXT = {
                     "The backup includes doctors, weeks and settings. Keep a copy on another device too."),
     "rules": ("Regole di conteggio", "Counting rules"),
     "rules_text": (
-        "Sala: 7h. Ambulatorio PM: 4h30m, oppure 4h dopo sala. Reperibilità PM: 4h, oppure 3h dopo sala.\n"
+        "Sala: 7h. Ambulatorio PM: 4h30m, oppure 4h dopo sala. Reperibilità PM: 4h, oppure 3h dopo sala; sabato e domenica 0h.\n"
         "Ambulatorio AM: 6h. Reperibilità AM: 6h30m, solo sabato. Guardia diurna: 13h.\n"
         "Notte: 6h30m nel giorno iniziale + 6h30m nello smonto del giorno successivo.\n"
         "Reparto: 9h senza ACC-W.S., 8h con ACC-W.S. ACC-W.S.: 6h30m.\n"
-        "Ferie: +6h20m. Recupero: −6h20m. Assenza: 0h.\n"
+        "Ferie/Corsi: +6h20m. Recupero: 0h. Assenza: 0h.\n"
         "Nel giorno dello smonto sono consentiti solo Reperibilità notturna e Ambulatorio a pagamento, con avviso.\n"
         "Assenza, ferie e recupero impediscono nuove assegnazioni lavorative nello stesso giorno.\n"
         "Ogni medico principale riceve l’intero peso dell’attività. Referenti e persone in formazione: 0h.",
-        "Surgery: 7h. PM clinic: 4h30m, or 4h after surgery. PM on-call: 4h, or 3h after surgery.\n"
+        "Surgery: 7h. PM clinic: 4h30m, or 4h after surgery. PM on-call: 4h, or 3h after surgery; Saturday and Sunday 0h.\n"
         "AM clinic: 6h. AM on-call: 6h30m, Saturdays only. Day duty: 13h.\n"
         "Night: 6h30m on the start date + 6h30m on the following night's recovery day.\n"
         "Ward: 9h without ACC-W.S., 8h with ACC-W.S. ACC-W.S.: 6h30m.\n"
-        "Annual leave: +6h20m. Time off in lieu: −6h20m. Absence: 0h.\n"
+        "Leave/Courses: +6h20m. Time off in lieu: 0h. Absence: 0h.\n"
         "Only night on-call and paid clinics are allowed on the post-night rest day, with a warning.\n"
         "Absence, annual leave and time off in lieu prevent work assignments on that day.\n"
         "Every main doctor receives the full activity hours. Contacts and trainees: 0h."),
@@ -204,7 +204,7 @@ TEXT = {
     "clinic_pm": ("Ambulatorio PM", "PM clinic"),
     "night_off": ("S.N.", "Night-off"),
     "absence": ("Assenza", "Absence"),
-    "holiday": ("Ferie", "Annual leave"),
+    "holiday": ("Ferie/Corsi", "Leave/Courses"),
     "recovery": ("Recupero", "Time off in lieu"),
     "minutes": ("Minuti", "Minutes"),
     "hours": ("Ore", "Hours"),
